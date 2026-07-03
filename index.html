@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Analyseur Éolien</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#0B2340;--blue:#1A5FA8;--blue-hover:#134B87;--blue-light:#EBF2FB;
+  --teal:#1A9469;--teal-light:#E5F5EF;
+  --amber:#B45309;--amber-light:#FEF3C7;
+  --purple:#6D28D9;--purple-light:#F5F3FF;
+  --red:#DC2626;
+  --bg:#EDECE6;--card:#FFFFFF;
+  --text:#0F172A;--muted:#64748B;--subtle:#94A3B8;
+  --border:rgba(0,0,0,0.09);--border-med:rgba(0,0,0,0.14);
+  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
+  --sh-sm:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --sh-md:0 4px 16px rgba(0,0,0,.09),0 2px 4px rgba(0,0,0,.05);
+  --sh-lg:0 8px 32px rgba(0,0,0,.10),0 4px 8px rgba(0,0,0,.06);
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5;
+}
+
+/* Header */
+.hdr{
+  background:linear-gradient(135deg,#081C35 0%,var(--navy) 40%,#1A3F6F 100%);
+  padding:1rem 1.25rem; display:flex; align-items:center; gap:12px;
+}
+.hdr-logo{
+  width:40px;height:40px;border-radius:10px;
+  background:rgba(255,255,255,.12);
+  display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
+}
+.hdr-title{color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;line-height:1.2;}
+.hdr-sub{color:rgba(255,255,255,.45);font-size:11px;margin-top:2px;letter-spacing:.2px;}
+
+/* Container */
+.wrap{max-width:1100px;margin:0 auto;padding:1.25rem 1rem 2rem;}
+
+/* Search */
+.search-block{margin-bottom:1rem;}
+.search-row{display:flex;gap:8px;}
+.sinput-wrap{flex:1;position:relative;}
+.sinput-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;width:16px;height:16px;}
+.sinput{
+  width:100%;padding:11px 14px 11px 38px;
+  border:1.5px solid var(--border-med);border-radius:var(--r-md);
+  font-size:14px;background:var(--card);color:var(--text);outline:none;
+  box-shadow:var(--sh-sm);transition:border-color .15s,box-shadow .15s;
+}
+.sinput:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,95,168,.13),var(--sh-sm);}
+.sbtn{
+  flex-shrink:0;padding:11px 20px;background:var(--blue);color:#fff;border:none;border-radius:var(--r-md);
+  font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;
+  box-shadow:var(--sh-sm);transition:background .15s,transform .1s;
+  display:flex;align-items:center;gap:7px;
+}
+.sbtn:hover{background:var(--blue-hover);}
+.sbtn:active{transform:scale(.97);}
+.sbtn svg{flex-shrink:0;}
+
+/* Autocomplete */
+.sugg-box{
+  display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:var(--card);border:1.5px solid var(--border-med);border-radius:var(--r-md);
+  z-index:9999;max-height:260px;overflow-y:auto;box-shadow:var(--sh-lg);
+}
+.si{display:flex;align-items:flex-start;gap:9px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;}
+.si:last-child{border-bottom:none;}
+.si:hover,.si:focus{background:var(--blue-light);}
+.si-pin{color:var(--muted);flex-shrink:0;margin-top:1px;width:14px;height:14px;}
+.si-main{font-size:13px;font-weight:500;color:var(--text);line-height:1.3;}
+.si-sub{font-size:11px;color:var(--muted);margin-top:1px;line-height:1.3;}
+
+/* Status */
+.status-bar{font-size:13px;color:var(--muted);min-height:18px;white-space:pre-line;margin-bottom:1rem;}
+
+/* Grid */
+.main-grid{display:grid;grid-template-columns:1fr;gap:1rem;}
+@media(min-width:780px){.main-grid{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:1.25rem;align-items:start;}}
+
+/* Map */
+.map-lbl{font-size:12px;color:var(--muted);margin-bottom:6px;min-height:16px;line-height:1.4;}
+.map-box{border-radius:var(--r-lg);overflow:hidden;border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);height:300px;}
+@media(min-width:780px){.map-box{height:440px;}}
+#map{height:100%;}
+
+/* Stats panel */
+.stats{display:none;}
+@media(min-width:780px){.stats{padding-top:22px;}}
+
+/* Metric cards */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.875rem;}
+.mc{
+  background:var(--card);border-radius:var(--r-md);padding:.875rem 1rem;
+  border:1.5px solid var(--border);box-shadow:var(--sh-sm);position:relative;overflow:hidden;
+}
+.mc::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--blue));border-radius:3px 3px 0 0;}
+.mc-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
+.mc-val{font-size:22px;font-weight:800;color:var(--text);line-height:1;letter-spacing:-.5px;}
+
+/* Chart card */
+.chart-card{background:var(--card);border-radius:var(--r-md);padding:1rem;border:1.5px solid var(--border);box-shadow:var(--sh-sm);}
+.sec-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.75rem;}
+.chart-wrap{position:relative;height:180px;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:.75rem;}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.ld{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+
+/* Weibull */
+.weibull-row{margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border);}
+.wb-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px;}
+.wb-val{font-size:14px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+
+/* Days section */
+.days-section{margin-top:.875rem;}
+.days-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
+.days-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.875rem;}
+.dc{
+  background:var(--card);border-radius:var(--r-md);padding:.875rem 1rem;
+  border:1.5px solid var(--border);box-shadow:var(--sh-sm);
+  position:relative;overflow:hidden;text-align:center;
+}
+.dc::before{
+  content:'';position:absolute;inset:0;opacity:.06;
+  background:var(--dc-color,var(--blue));
+}
+.dc-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--dc-color,var(--blue));margin-bottom:6px;
+}
+.dc-val{font-size:32px;font-weight:800;color:var(--text);letter-spacing:-1px;line-height:1;}
+.dc-unit{font-size:11px;color:var(--muted);margin-top:4px;}
+.dc-bar-bg{height:4px;background:var(--bg);border-radius:2px;margin-top:10px;overflow:hidden;}
+.dc-bar-fill{height:100%;border-radius:2px;background:var(--dc-color,var(--blue));transition:width .8s cubic-bezier(.4,0,.2,1);}
+.days-chart-card{background:var(--card);border-radius:var(--r-md);padding:1rem;border:1.5px solid var(--border);box-shadow:var(--sh-sm);}
+.days-chart-wrap{position:relative;height:150px;}
+
+/* Potential */
+.pot-card{
+  display:none;margin-top:1rem;padding:1rem 1.25rem;border-radius:var(--r-md);
+  border:1.5px solid var(--border);background:var(--card);box-shadow:var(--sh-sm);
+  display:none;align-items:flex-start;gap:12px;
+}
+.pot-icon{font-size:24px;flex-shrink:0;line-height:1;}
+.pot-head{font-size:13px;font-weight:700;margin-bottom:3px;}
+.pot-body{font-size:13px;color:var(--muted);line-height:1.6;}
+.pot-card.good{border-left:4px solid var(--teal);background:var(--teal-light);}
+.pot-card.good .pot-head{color:var(--teal);}
+.pot-card.mod{border-left:4px solid var(--amber);background:var(--amber-light);}
+.pot-card.mod .pot-head{color:var(--amber);}
+.pot-card.low{border-left:4px solid var(--muted);background:#F8F8F6;}
+.pot-card.low .pot-head{color:var(--muted);}
+.pot-card.exc{border-left:4px solid var(--purple);background:var(--purple-light);}
+.pot-card.exc .pot-head{color:var(--purple);}
+
+/* ── Simulator ────────────────────────────────────────────── */
+.sim-section{
+  display:none;margin-top:1.25rem;
+  background:var(--card);border-radius:var(--r-lg);
+  border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);overflow:hidden;
+}
+.sim-header{
+  background:linear-gradient(135deg,#081C35 0%,var(--navy) 55%,#1A3F6F 100%);
+  padding:1rem 1.25rem;display:flex;align-items:center;gap:12px;
+}
+.sim-header-icon{font-size:22px;}
+.sim-header-text{color:#fff;}
+.sim-header-title{font-size:14px;font-weight:700;letter-spacing:-.2px;}
+.sim-header-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;}
+.sim-body{padding:1.25rem;}
+
+/* Input controls */
+.sim-inputs{
+  display:grid;grid-template-columns:1fr 1fr;gap:.875rem;
+  margin-bottom:1.25rem;
+}
+@media(max-width:560px){.sim-inputs{grid-template-columns:1fr;}}
+.sim-input-block{
+  background:var(--bg);border-radius:var(--r-md);
+  padding:.875rem 1rem;display:flex;flex-direction:column;gap:.5rem;
+}
+.sim-input-label{font-size:12px;font-weight:700;color:var(--text);letter-spacing:-.1px;}
+.sim-input-sub{font-size:11px;color:var(--muted);line-height:1.4;}
+.sim-input-row{display:flex;align-items:center;gap:.625rem;margin-top:.25rem;}
+.sim-num{
+  width:80px;padding:7px 10px;
+  border:1.5px solid var(--border-med);border-radius:var(--r-sm);
+  font-size:18px;font-weight:800;color:var(--blue);text-align:center;
+  background:#fff;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.sim-num:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,95,168,.12);}
+.sim-num-unit{font-size:12px;color:var(--muted);font-weight:500;}
+.sim-derived{font-size:11px;color:var(--muted);margin-top:2px;}
+.sim-derived strong{color:var(--text);font-weight:700;}
+
+/* KPIs */
+.sim-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:1.25rem;}
+.sk{border-radius:var(--r-md);padding:.875rem 1rem;position:relative;overflow:hidden;border:1.5px solid var(--border);}
+.sk-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0;background:var(--sk-color,var(--blue));}
+.sk-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:5px;}
+.sk-val{font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1;}
+.sk-unit{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* Production table */
+.prod-table-wrap{overflow-x:auto;border-radius:var(--r-md);border:1.5px solid var(--border);margin-bottom:1rem;}
+table.prod-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.prod-table th{
+  background:var(--navy);color:rgba(255,255,255,.9);
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  padding:.6rem .875rem;text-align:left;white-space:nowrap;
+}
+table.prod-table th:not(:first-child){text-align:right;}
+table.prod-table td{
+  padding:.55rem .875rem;border-bottom:1px solid var(--border);
+  color:var(--text);white-space:nowrap;
+}
+table.prod-table td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;font-weight:500;}
+table.prod-table tr:last-child td{border-bottom:none;}
+table.prod-table tr:nth-child(even) td{background:rgba(0,0,0,.018);}
+table.prod-table tr:hover td{background:var(--blue-light);}
+table.prod-table .td-month{font-weight:600;color:var(--text);}
+table.prod-table .td-avg{color:var(--muted);}
+table.prod-table .td-real{color:var(--blue);}
+table.prod-table .td-bonus{color:var(--teal);font-size:11px;}
+table.prod-table tfoot td{
+  background:var(--navy);color:#fff;font-weight:800;
+  font-size:13px;border-bottom:none;
+}
+table.prod-table tfoot td:first-child{font-size:11px;text-transform:uppercase;letter-spacing:.4px;opacity:.75;}
+table.prod-table tfoot .td-real{color:#93C5FD;}
+table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
+
+/* Note */
+.sim-note{
+  padding:.75rem 1rem;background:var(--blue-light);
+  border-radius:var(--r-md);font-size:12px;color:#1e3a5f;line-height:1.6;
+}
+.sim-note strong{font-weight:700;}
+
+/* ── Météo-France station ─────────────────────────────────── */
+.mf-section{
+  display:none;margin-top:1.25rem;
+  background:var(--card);border-radius:var(--r-lg);
+  border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);overflow:hidden;
+}
+.mf-header{
+  background:linear-gradient(135deg,#0a3d1a 0%,#1a6b35 55%,#2d9e56 100%);
+  padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+.mf-header-left{display:flex;align-items:center;gap:12px;}
+.mf-header-icon{font-size:22px;}
+.mf-header-text{color:#fff;}
+.mf-header-title{font-size:14px;font-weight:700;letter-spacing:-.2px;}
+.mf-header-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
+.mf-load-btn{
+  flex-shrink:0;padding:8px 16px;background:rgba(255,255,255,.15);color:#fff;
+  border:1px solid rgba(255,255,255,.3);border-radius:var(--r-md);
+  font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:background .15s;
+}
+.mf-load-btn:hover{background:rgba(255,255,255,.25);}
+.mf-load-btn:disabled{opacity:.5;cursor:not-allowed;}
+.mf-body{padding:1.25rem;}
+.mf-status{font-size:13px;color:var(--muted);min-height:18px;margin-bottom:1rem;white-space:pre-line;}
+
+/* Station info badge */
+.mf-station-badge{
+  display:none;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--teal-light);border:1px solid rgba(26,148,105,.2);
+  border-radius:var(--r-md);padding:.75rem 1rem;margin-bottom:1.25rem;
+}
+.mf-station-badge .sb-icon{font-size:20px;}
+.mf-station-badge .sb-name{font-size:13px;font-weight:700;color:var(--teal);}
+.mf-station-badge .sb-meta{font-size:11px;color:var(--muted);margin-top:1px;}
+
+/* Comparison metrics */
+.mf-compare-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:8px;margin-bottom:1.25rem;
+}
+.cmc{
+  background:var(--bg);border-radius:var(--r-md);padding:.875rem 1rem;
+  border:1.5px solid var(--border);
+}
+.cmc-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;}
+.cmc-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.cmc-era{font-size:18px;font-weight:800;color:var(--blue);}
+.cmc-mf{font-size:18px;font-weight:800;color:var(--teal);}
+.cmc-sep{font-size:12px;color:var(--subtle);}
+.cmc-unit{font-size:11px;color:var(--muted);}
+.cmc-delta{font-size:11px;margin-top:3px;}
+.cmc-delta.pos{color:var(--teal);}
+.cmc-delta.neg{color:var(--red);}
+.cmc-delta.neu{color:var(--muted);}
+
+/* Comparison chart */
+.mf-chart-card{background:var(--card);border-radius:var(--r-md);padding:1rem;border:1.5px solid var(--border);box-shadow:var(--sh-sm);margin-bottom:1rem;}
+.mf-chart-wrap{position:relative;height:220px;}
+.mf-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:.75rem;}
+
+.mf-note{padding:.75rem 1rem;background:#F0FDF4;border-radius:var(--r-md);font-size:12px;color:#14532d;line-height:1.6;}
+.mf-note strong{font-weight:700;}
+.leaflet-popup-tip-container{display:none;}
+.leaflet-popup-content{margin:10px 14px!important;font-family:inherit!important;font-size:13px!important;line-height:1.7!important;}
+.wri{background:transparent!important;border:none!important;box-shadow:none!important;}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-logo">💨</div>
+  <div>
+    <div class="hdr-title">Analyseur de potentiel éolien</div>
+    <div class="hdr-sub">ERA5 · OpenStreetMap · Open-Meteo — données horaires sur 5 ans</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="search-block">
+    <div class="search-row">
+      <div class="sinput-wrap">
+        <svg class="sinput-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M15 15l-2.5-2.5"/></svg>
+        <input type="text" id="addr" class="sinput" placeholder="Commune, adresse, lieu-dit…" autocomplete="off" aria-label="Adresse à analyser">
+        <div id="sugg" class="sugg-box" role="listbox" aria-label="Suggestions d'adresses"></div>
+      </div>
+      <button class="sbtn" onclick="doAnalysis()" aria-label="Lancer l'analyse">
+        <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
+        Analyser
+      </button>
+    </div>
+  </div>
+
+  <div class="status-bar" id="st" role="status" aria-live="polite"></div>
+
+  <div class="main-grid">
+    <div>
+      <div class="map-lbl" id="lloc"></div>
+      <div class="map-box"><div id="map"></div></div>
+    </div>
+    <div class="stats" id="panel">
+      <div class="metrics">
+        <div class="mc" style="--accent:var(--blue)"><div class="mc-lbl">Vitesse moy.</div><div class="mc-val" id="v0">—</div></div>
+        <div class="mc" style="--accent:#64748B"><div class="mc-lbl">Vitesse max</div><div class="mc-val" id="v1">—</div></div>
+        <div class="mc" style="--accent:var(--teal)"><div class="mc-lbl">Dir. dominante</div><div class="mc-val" id="v2" style="font-size:28px;letter-spacing:0;">—</div></div>
+        <div class="mc" style="--accent:var(--amber)"><div class="mc-lbl">Heures calmes</div><div class="mc-val" id="v3">—</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="sec-lbl">Vitesse moyenne mensuelle</div>
+        <div class="chart-wrap"><canvas id="mch" role="img" aria-label="Histogramme de la vitesse du vent par mois">Chargement.</canvas></div>
+        <div class="legend">
+          <div class="li"><div class="ld" style="background:#4CAF50"></div>&lt; 3 m/s</div>
+          <div class="li"><div class="ld" style="background:#1976D2"></div>3–5 m/s</div>
+          <div class="li"><div class="ld" style="background:#7C3AED"></div>5–7 m/s</div>
+          <div class="li"><div class="ld" style="background:#DC2626"></div>&gt; 7 m/s</div>
+        </div>
+        <div class="weibull-row">
+          <div class="wb-lbl">Distribution de Weibull</div>
+          <div class="wb-val" id="wb">—</div>
+        </div>
+      </div>
+
+      <!-- Jours productifs -->
+      <div class="days-section">
+        <div class="days-cards">
+          <div class="dc" style="--dc-color:var(--teal)">
+            <div class="dc-badge">
+              <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3 3l1.5 1.5M9.5 9.5L11 11M3 11l1.5-1.5M9.5 4.5L11 3"/></svg>
+              ≥ 5 m/s
+            </div>
+            <div class="dc-val" id="d5">—</div>
+            <div class="dc-unit">jours / an en moyenne</div>
+            <div class="dc-bar-bg"><div class="dc-bar-fill" id="d5bar" style="width:0%"></div></div>
+          </div>
+          <div class="dc" style="--dc-color:var(--purple)">
+            <div class="dc-badge">
+              <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3 3l1.5 1.5M9.5 9.5L11 11M3 11l1.5-1.5M9.5 4.5L11 3"/></svg>
+              ≥ 10 m/s
+            </div>
+            <div class="dc-val" id="d10">—</div>
+            <div class="dc-unit">jours / an en moyenne</div>
+            <div class="dc-bar-bg"><div class="dc-bar-fill" id="d10bar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div class="days-chart-card">
+          <div class="sec-lbl" style="margin-bottom:.5rem;">Jours productifs par mois · moyenne 2019–2023</div>
+          <div style="display:flex;gap:12px;margin-bottom:.65rem;flex-wrap:wrap;">
+            <div class="li"><div class="ld" style="background:rgba(26,148,105,.8)"></div>Jours ≥ 5 m/s</div>
+            <div class="li"><div class="ld" style="background:rgba(109,40,217,.8)"></div>Jours ≥ 10 m/s</div>
+          </div>
+          <div class="days-chart-wrap"><canvas id="dch" role="img" aria-label="Jours productifs par mois">Chargement.</canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pot-card" id="pot">
+    <div class="pot-icon" id="pot-icon">—</div>
+    <div><div class="pot-head" id="pot-head">—</div><div class="pot-body" id="pot-body"></div></div>
+  </div>
+
+  <!-- ── Simulator ─────────────────────────────────────────── -->
+  <div class="sim-section" id="sim">
+    <div class="sim-header">
+      <div class="sim-header-icon">⚡</div>
+      <div class="sim-header-text">
+        <div class="sim-header-title">Simulateur de production</div>
+        <div class="sim-header-sub">CP = 0,3 · A = 0,297 m²/turbine · ρ = 1,225 kg/m³ · seuil = 2 m/s</div>
+      </div>
+    </div>
+    <div class="sim-body">
+
+      <!-- Dual inputs -->
+      <div class="sim-inputs">
+        <div class="sim-input-block">
+          <div class="sim-input-label">Nombre d'éoliennes</div>
+          <div class="sim-input-sub">Saisir directement le nombre de turbines</div>
+          <div class="sim-input-row">
+            <input type="number" id="inp-turbines" class="sim-num" min="1" max="9999" value="6" oninput="onTurbinesChange()">
+            <span class="sim-num-unit">turbines</span>
+          </div>
+          <div class="sim-derived" id="der-turbines">Surface : <strong>1,782 m²</strong></div>
+        </div>
+        <div class="sim-input-block">
+          <div class="sim-input-label">Nombre de structures</div>
+          <div class="sim-input-sub">1 structure = 6 éoliennes</div>
+          <div class="sim-input-row">
+            <input type="number" id="inp-struct" class="sim-num" min="1" max="9999" value="1" oninput="onStructChange()">
+            <span class="sim-num-unit">structures</span>
+          </div>
+          <div class="sim-derived" id="der-struct">= <strong>6 turbines</strong> · Surface : <strong>1,782 m²</strong></div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="sim-kpis">
+        <div class="sk" style="--sk-color:var(--blue)">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Production réelle ERA5</div>
+          <div class="sk-val" id="sk-real">—</div>
+          <div class="sk-unit">kWh / an</div>
+        </div>
+        <div class="sk" style="--sk-color:#94A3B8">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Estimation v. moyenne</div>
+          <div class="sk-val" id="sk-avg">—</div>
+          <div class="sk-unit">kWh / an</div>
+        </div>
+        <div class="sk" style="--sk-color:var(--teal)">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Bonus variabilité</div>
+          <div class="sk-val" id="sk-bonus">—</div>
+          <div class="sk-unit">gain rafales / pics</div>
+        </div>
+        <div class="sk" style="--sk-color:var(--amber)">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Heures éq. pleine charge</div>
+          <div class="sk-val" id="sk-hours">—</div>
+          <div class="sk-unit">h / an</div>
+        </div>
+      </div>
+
+      <!-- Production table -->
+      <div class="prod-table-wrap">
+        <table class="prod-table">
+          <thead>
+            <tr>
+              <th>Mois</th>
+              <th>Estim. v. moy. (kWh)</th>
+              <th>Réelle ERA5 (kWh)</th>
+              <th>Bonus variab.</th>
+            </tr>
+          </thead>
+          <tbody id="prod-tbody"></tbody>
+          <tfoot>
+            <tr>
+              <td>Total annuel</td>
+              <td class="td-avg" id="ft-avg">—</td>
+              <td class="td-real" id="ft-real">—</td>
+              <td class="td-bonus" id="ft-bonus">—</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="sim-note">
+        <strong>Réelle ERA5</strong> : somme heure par heure de P = CP × ½ρAv³ sur 2019–2023, divisée par 5.
+        Intègre l'effet des rafales et pics via la convexité de v³ (inégalité de Jensen).
+        <strong>L'estimation v. moyenne sous-estime systématiquement la production réelle</strong> — le bonus mesure cet écart.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Station Météo-France ───────────────────────────────── -->
+  <div class="mf-section" id="mf-section">
+    <div class="mf-header">
+      <div class="mf-header-left">
+        <div class="mf-header-icon">📡</div>
+        <div class="mf-header-text">
+          <div class="mf-header-title">Comparaison avec une station Météo-France</div>
+          <div class="mf-header-sub">Données réelles mesurées au sol · réseau officiel RESO40</div>
+        </div>
+      </div>
+      <button class="mf-load-btn" id="mf-btn" onclick="loadMFStation()">Charger la station la plus proche</button>
+    </div>
+    <div class="mf-body">
+      <div class="mf-status" id="mf-status"></div>
+
+      <!-- Badge station -->
+      <div class="mf-station-badge" id="mf-badge">
+        <div class="sb-icon">🏔️</div>
+        <div>
+          <div class="sb-name" id="mf-sname">—</div>
+          <div class="sb-meta" id="mf-smeta">—</div>
+        </div>
+      </div>
+
+      <!-- Métriques comparées -->
+      <div class="mf-compare-grid" id="mf-metrics" style="display:none;">
+        <div class="cmc">
+          <div class="cmc-lbl">Vitesse moyenne</div>
+          <div class="cmc-row">
+            <span class="cmc-era" id="cm-era-avg">—</span>
+            <span class="cmc-sep">ERA5</span>
+            <span class="cmc-mf" id="cm-mf-avg">—</span>
+            <span class="cmc-sep">MF</span>
+            <span class="cmc-unit">m/s</span>
+          </div>
+          <div class="cmc-delta" id="cm-delta-avg"></div>
+        </div>
+        <div class="cmc">
+          <div class="cmc-lbl">Dir. dominante</div>
+          <div class="cmc-row">
+            <span class="cmc-era" id="cm-era-dir">—</span>
+            <span class="cmc-sep">ERA5</span>
+            <span class="cmc-mf" id="cm-mf-dir">—</span>
+            <span class="cmc-sep">MF</span>
+          </div>
+        </div>
+        <div class="cmc">
+          <div class="cmc-lbl">Jours ≥ 5 m/s</div>
+          <div class="cmc-row">
+            <span class="cmc-era" id="cm-era-d5">—</span>
+            <span class="cmc-sep">ERA5</span>
+            <span class="cmc-mf" id="cm-mf-d5">—</span>
+            <span class="cmc-sep">MF</span>
+            <span class="cmc-unit">j/an</span>
+          </div>
+          <div class="cmc-delta" id="cm-delta-d5"></div>
+        </div>
+        <div class="cmc">
+          <div class="cmc-lbl">Jours ≥ 10 m/s</div>
+          <div class="cmc-row">
+            <span class="cmc-era" id="cm-era-d10">—</span>
+            <span class="cmc-sep">ERA5</span>
+            <span class="cmc-mf" id="cm-mf-d10">—</span>
+            <span class="cmc-sep">MF</span>
+            <span class="cmc-unit">j/an</span>
+          </div>
+          <div class="cmc-delta" id="cm-delta-d10"></div>
+        </div>
+      </div>
+
+      <!-- Graphique comparaison mensuelle -->
+      <div class="mf-chart-card" id="mf-chart-card" style="display:none;">
+        <div class="sec-lbl" style="margin-bottom:.75rem;">Vitesse moyenne mensuelle · ERA5 vs station MF</div>
+        <div class="mf-legend">
+          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>ERA5 (réanalyse)</div>
+          <div class="li"><div class="ld" style="background:rgba(26,148,105,.85)"></div>Station MF (mesure sol)</div>
+        </div>
+        <div class="mf-chart-wrap" style="margin-top:.75rem;">
+          <canvas id="mfch" role="img" aria-label="Comparaison vitesse mensuelle ERA5 vs Météo-France">Chargement.</canvas>
+        </div>
+        <div class="mf-note" style="margin-top:1rem;" id="mf-note"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+var D16=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+var gmap,locMk,roseMk,chartInst,acTimer,chosen=null;
+/* Simulator globals */
+var SIM_CP=0.3, SIM_A_UNIT=0.297, SIM_RHO=1.225, SIM_VMIN=2;
+var SIM_K=SIM_CP*0.5*SIM_RHO*SIM_A_UNIT;
+var simSpeeds=null, simMonths=null, simMonthlyAvg=null, simTotalYears=1;
+
+function setSt(m){document.getElementById('st').textContent=m;}
+function d2s(d){return Math.round(((d%360)+360)%360/22.5)%16;}
+function gamma(z){
+  if(z<.5)return Math.PI/(Math.sin(Math.PI*z)*gamma(1-z));
+  z-=1;var x=.99999999999980993;
+  var p=[676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  for(var i=0;i<8;i++)x+=p[i]/(z+i+1);
+  return Math.sqrt(2*Math.PI)*Math.pow(z+7.5,z+.5)*Math.exp(-(z+7.5))*x;
+}
+
+/* Map init */
+gmap=L.map('map').setView([47.2,2.8],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:18
+}).addTo(gmap);
+
+/* Autocomplete */
+var ainp=document.getElementById('addr'), sbox=document.getElementById('sugg');
+ainp.addEventListener('input',function(){
+  chosen=null;clearTimeout(acTimer);
+  var q=ainp.value.trim();
+  if(q.length<3){sbox.style.display='none';return;}
+  acTimer=setTimeout(function(){fetchAC(q);},320);
+});
+ainp.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){sbox.style.display='none';doAnalysis();}
+  if(e.key==='Escape')sbox.style.display='none';
+});
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#addr')&&!e.target.closest('#sugg'))sbox.style.display='none';
+});
+
+async function fetchAC(q){
+  try{
+    var r=await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&limit=6&accept-language=fr');
+    var items=await r.json();
+    sbox.innerHTML='';
+    if(!items.length){sbox.style.display='none';return;}
+    items.forEach(function(item){
+      var pts=item.display_name.split(',');
+      var d=document.createElement('div');
+      d.className='si';d.setAttribute('role','option');d.setAttribute('tabindex','0');
+      d.innerHTML='<svg class="si-pin" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M10 2a6 6 0 0 1 6 6c0 4-6 10-6 10S4 12 4 8a6 6 0 0 1 6-6z"/><circle cx="10" cy="8" r="2"/></svg>'
+        +'<div><div class="si-main">'+pts.slice(0,2).join(', ')+'</div><div class="si-sub">'+pts.slice(2,5).join(', ')+'</div></div>';
+      function pick(){
+        ainp.value=pts.slice(0,3).join(', ');
+        chosen={lat:parseFloat(item.lat),lon:parseFloat(item.lon),name:item.display_name};
+        sbox.style.display='none';
+        runAnalysis(chosen.lat,chosen.lon,chosen.name);
+      }
+      d.addEventListener('click',pick);
+      d.addEventListener('keydown',function(e){if(e.key==='Enter')pick();});
+      sbox.appendChild(d);
+    });
+    sbox.style.display='block';
+  }catch(e){sbox.style.display='none';}
+}
+
+async function doAnalysis(){
+  sbox.style.display='none';
+  if(chosen){runAnalysis(chosen.lat,chosen.lon,chosen.name);return;}
+  var q=ainp.value.trim();if(!q)return;
+  setSt('⌛ Géolocalisation…');
+  try{
+    var r=await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&limit=1&accept-language=fr');
+    var g=await r.json();
+    if(!g.length){setSt('Adresse introuvable. Essayez une autre formulation.');return;}
+    chosen={lat:parseFloat(g[0].lat),lon:parseFloat(g[0].lon),name:g[0].display_name};
+    runAnalysis(chosen.lat,chosen.lon,chosen.name);
+  }catch(e){setSt('Erreur : '+e.message);}
+}
+
+async function runAnalysis(lat,lon,dn){
+  var place=dn.split(',').slice(0,3).join(', ');
+  setSt('📍 '+place+'\n⌛ Téléchargement des archives ERA5 (5 ans — données horaires)…');
+  gmap.setView([lat,lon],11,{animate:true});
+  try{
+    var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
+      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=UTC';
+    var res=await fetch(url),meteo=await res.json();
+    if(!meteo.hourly){setSt('Erreur lors de la récupération des données météo.');return;}
+    setSt('⌛ Calcul des statistiques…');
+
+    var sp=meteo.hourly.wind_speed_10m, di=meteo.hourly.wind_direction_10m, tm=meteo.hourly.time;
+    var vd=[];
+    window.simHours=[];
+    for(var i=0;i<sp.length;i++){
+      if(sp[i]!==null&&di[i]!==null){
+        var mo_=parseInt(tm[i].slice(5,7))-1;
+        vd.push({s:sp[i],d:di[i],m:mo_});
+        window.simHours.push({s:sp[i],m:mo_});
+      }
+    }
+
+    var sm=0,mx=0,cl=0;
+    vd.forEach(function(x){sm+=x.s;if(x.s>mx)mx=x.s;if(x.s<2)cl++;});
+    var n=vd.length, avg=sm/n, cp=(cl/n)*100, vr=0;
+    vd.forEach(function(x){vr+=(x.s-avg)*(x.s-avg);});
+    var sd=Math.sqrt(vr/n), k=Math.pow(avg/sd,1.086), c=avg/gamma(1+1/k);
+
+    var scts=Array(16).fill(0), ssps=Array(16).fill(0);
+    vd.forEach(function(x){var s=d2s(x.d);scts[s]++;ssps[s]+=x.s;});
+    var ds=scts.indexOf(Math.max.apply(null,scts));
+
+    var mo=Array(12).fill(null).map(function(){return{s:0,n:0};});
+    vd.forEach(function(x){mo[x.m].s+=x.s;mo[x.m].n++;});
+    var ma=mo.map(function(m){return m.n?m.s/m.n:0;});
+
+    /* --- Jours productifs ---
+       On groupe les lectures horaires par date (YYYY-MM-DD),
+       on calcule la vitesse moyenne journalière,
+       puis on compte les jours où elle dépasse le seuil. */
+    var dayMap={};
+    for(var i=0;i<sp.length;i++){
+      if(sp[i]===null)continue;
+      var dateKey=tm[i].slice(0,10);
+      if(!dayMap[dateKey])dayMap[dateKey]={s:0,n:0,m:parseInt(tm[i].slice(5,7))-1};
+      dayMap[dateKey].s+=sp[i]; dayMap[dateKey].n++;
+    }
+    var days=Object.values(dayMap).map(function(d){return{avg:d.s/d.n,m:d.m};});
+    var totalDays=days.length, totalYears=totalDays/365;
+    var cnt5=0,cnt10=0;
+    days.forEach(function(d){if(d.avg>=5)cnt5++;if(d.avg>=10)cnt10++;});
+    var avg5=cnt5/totalYears, avg10=cnt10/totalYears;
+
+    /* Monthly breakdown */
+    var mo5=Array(12).fill(0), mo10=Array(12).fill(0), moCnt=Array(12).fill(0);
+    days.forEach(function(d){moCnt[d.m]++;if(d.avg>=5)mo5[d.m]++;if(d.avg>=10)mo10[d.m]++;});
+    var years=Math.max(1,totalYears);
+    var mo5avg=mo5.map(function(v){return parseFloat((v/years).toFixed(1));});
+    var mo10avg=mo10.map(function(v){return parseFloat((v/years).toFixed(1));});
+
+    document.getElementById('lloc').textContent='📍 '+place+' — '+lat.toFixed(3)+', '+lon.toFixed(3)+' — ERA5 2019–2023 ('+Math.round(n/1000)+'k points)';
+    document.getElementById('v0').textContent=avg.toFixed(1)+' m/s';
+    document.getElementById('v1').textContent=mx.toFixed(1)+' m/s';
+    document.getElementById('v2').textContent=D16[ds];
+    document.getElementById('v3').textContent=cp.toFixed(0)+'%';
+    document.getElementById('wb').textContent='k = '+k.toFixed(2)+'   ·   c = '+c.toFixed(2)+' m/s';
+
+    document.getElementById('d5').textContent=Math.round(avg5);
+    document.getElementById('d10').textContent=Math.round(avg10);
+    /* Progress bars: 365 days = 100% for ≥5 ; 100 days = 100% for ≥10 (practical max) */
+    document.getElementById('d5bar').style.width=Math.min(100,(avg5/365)*100).toFixed(1)+'%';
+    document.getElementById('d10bar').style.width=Math.min(100,(avg10/100)*100).toFixed(1)+'%';
+
+    var potEl=document.getElementById('pot');
+    var head='',body='',cls='',icon='';
+    if(avg<3){
+      cls='low';icon='🌫️';head='Potentiel faible (< 3 m/s)';
+      body='Site peu adapté à l\'éolien standard. Des modèles à très faible vitesse de démarrage (type Savonius) peuvent être explorés, ou l\'optimisation d\'autres sources renouvelables (solaire, géothermie).';
+    } else if(avg<4.5){
+      cls='mod';icon='🌬️';head='Potentiel modéré (3–4,5 m/s)';
+      body='Site utilisable pour de petites éoliennes domestiques (< 3 kW). Étudier attentivement la hauteur de mât (min. 10 m au-dessus des obstacles) et les masques locaux — bâtiments, végétation, relief.';
+    } else if(avg<6){
+      cls='good';icon='💨';head='Bon potentiel (4,5–6 m/s)';
+      body='Site favorable pour des éoliennes résidentielles à semi-professionnelles (3–20 kW). La production annuelle peut être significative. Une étude de mât de mesure sur 12 mois est recommandée avant installation.';
+    } else {
+      cls='exc';icon='⚡';head='Excellent potentiel (> 6 m/s)';
+      body='Parmi les meilleurs sites de France continentale. Pertinent pour des installations de 10 kW et plus. Vérifier les contraintes réglementaires locales (PLU, distances, servitudes aériennes).';
+    }
+    potEl.className='pot-card '+cls;
+    document.getElementById('pot-icon').textContent=icon;
+    document.getElementById('pot-head').textContent=head;
+    document.getElementById('pot-body').textContent=body;
+    potEl.style.display='flex';
+
+    /* Store for simulator */
+    simSpeeds=sp; simMonths=vd.map(function(x){return x.m;}); simMonthlyAvg=ma;
+    simTotalYears=Math.max(1,totalYears);
+    /* Init inputs and run first computation */
+    var initT=parseInt(document.getElementById('inp-turbines').value)||6;
+    updateDerived(initT);
+    computeProduction(initT);
+    document.getElementById('sim').style.display='block';
+    document.getElementById('mf-section').style.display='block';
+
+    updateMap(lat,lon,scts,ssps,n,avg,D16[ds],place);
+    drawMonthly(ma);
+    drawDays(mo5avg,mo10avg);
+    document.getElementById('panel').style.display='block';
+    setSt('');
+  }catch(e){setSt('Erreur : '+e.message);console.error(e);}
+}
+
+function updateMap(lat,lon,scts,ssps,total,avg,domDir,place){
+  if(locMk)gmap.removeLayer(locMk);
+  if(roseMk)gmap.removeLayer(roseMk);
+
+  locMk=L.circleMarker([lat,lon],{radius:9,fillColor:'#1A5FA8',color:'#fff',weight:2.5,fillOpacity:1})
+    .addTo(gmap)
+    .bindPopup(
+      '<strong style="font-size:14px;display:block;margin-bottom:4px;">'+place.split(',')[0]+'</strong>'
+      +'Vitesse moy. : <strong>'+avg.toFixed(1)+' m/s</strong><br>'
+      +'Dir. dominante : <strong>'+domDir+'</strong>',
+      {offset:[0,-4]}
+    ).openPopup();
+
+  var sz=320,oc=document.createElement('canvas');
+  oc.width=sz;oc.height=sz;
+  drawRose(oc,scts,ssps,total);
+
+  roseMk=L.marker([lat,lon],{
+    icon:L.divIcon({
+      html:'<img src="'+oc.toDataURL()+'" width="'+sz+'" height="'+sz+'" style="opacity:.7;pointer-events:none;" alt="rose des vents">',
+      iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],className:'wri'
+    }),
+    interactive:false,zIndexOffset:-1000
+  }).addTo(gmap);
+}
+
+function drawRose(cv,counts,sums,total){
+  var ctx=cv.getContext('2d'),W=cv.width,H=cv.height,cx=W/2,cy=H/2,maxR=Math.min(cx,cy)-24;
+  ctx.clearRect(0,0,W,H);
+  var mf=Math.max.apply(null,counts)/total;
+
+  /* Grid circles */
+  [.25,.5,.75,1].forEach(function(r,i){
+    ctx.beginPath();ctx.arc(cx,cy,maxR*r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1;ctx.stroke();
+    if(i>0){
+      ctx.font='9px sans-serif';ctx.fillStyle='rgba(0,0,0,0.38)';
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillText((r*mf*100).toFixed(0)+'%',cx+maxR*r+2,cy);
+    }
+  });
+  /* Spokes */
+  for(var i=0;i<8;i++){
+    var a=i*Math.PI/8;
+    ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*maxR,cy+Math.sin(a)*maxR);
+    ctx.lineTo(cx-Math.cos(a)*maxR,cy-Math.sin(a)*maxR);
+    ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=.5;ctx.stroke();
+  }
+  /* Petals */
+  var bands=[{mx:3,c:'rgba(76,175,80,.80)'},{mx:5,c:'rgba(25,118,210,.80)'},{mx:7,c:'rgba(124,58,237,.80)'},{mx:1e9,c:'rgba(220,38,38,.80)'}];
+  var step=(Math.PI*2)/16;
+  counts.forEach(function(cnt,i){
+    if(!cnt)return;
+    var r=(cnt/total/mf)*maxR,a=i*step-Math.PI/2,av=sums[i]/cnt;
+    var b=bands.filter(function(b){return av<b.mx;})[0]||bands[3];
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,a-step/2,a+step/2);ctx.closePath();
+    ctx.fillStyle=b.c;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=.7;ctx.stroke();
+  });
+  /* Cardinal labels */
+  [{l:'N',a:-90},{l:'E',a:0},{l:'S',a:90},{l:'O',a:180}].forEach(function(o){
+    var r=o.a*Math.PI/180;
+    ctx.font='700 13px sans-serif';ctx.fillStyle='rgba(0,0,0,0.8)';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(o.l,cx+Math.cos(r)*(maxR+16),cy+Math.sin(r)*(maxR+16));
+  });
+}
+
+function drawDays(m5,m10){
+  if(window.daysChartInst)window.daysChartInst.destroy();
+  window.daysChartInst=new Chart(document.getElementById('dch'),{
+    type:'bar',
+    data:{
+      labels:['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
+      datasets:[
+        {label:'Jours ≥ 5 m/s',data:m5,backgroundColor:'rgba(26,148,105,.78)',borderRadius:4,borderSkipped:false,order:2},
+        {label:'Jours ≥ 10 m/s',data:m10,backgroundColor:'rgba(109,40,217,.82)',borderRadius:4,borderSkipped:false,order:1}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label:function(c){return c.dataset.label+' : '+c.parsed.y.toFixed(1)+' j';}
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#94A3B8',font:{size:10},autoSkip:false,maxRotation:0},grid:{display:false},border:{display:false}},
+        y:{min:0,ticks:{color:'#94A3B8',font:{size:10},callback:function(v){return v+' j';}},grid:{color:'rgba(0,0,0,0.05)'},border:{display:false}}
+      }
+    }
+  });
+}
+
+function drawMonthly(avg){
+  if(chartInst)chartInst.destroy();
+  chartInst=new Chart(document.getElementById('mch'),{
+    type:'bar',
+    data:{
+      labels:['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
+      datasets:[{
+        data:avg.map(function(v){return parseFloat(v.toFixed(2));}),
+        backgroundColor:avg.map(function(v){
+          return v>=5?'rgba(124,58,237,.82)':v>=3.5?'rgba(25,118,210,.82)':'rgba(76,175,80,.82)';
+        }),
+        borderRadius:5,borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y.toFixed(1)+' m/s';}}}},
+      scales:{
+        x:{ticks:{color:'#94A3B8',font:{size:10},autoSkip:false,maxRotation:0},grid:{display:false},border:{display:false}},
+        y:{min:0,ticks:{color:'#94A3B8',font:{size:10},callback:function(v){return v.toFixed(1);}},grid:{color:'rgba(0,0,0,0.05)'},border:{display:false}}
+      }
+    }
+  });
+}
+
+/* ── Simulator ───────────────────────────────────────────── */
+var TURB_PER_STRUCT=6;
+var SIM_MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+function onTurbinesChange(){
+  var t=Math.max(1,parseInt(document.getElementById('inp-turbines').value)||1);
+  document.getElementById('inp-turbines').value=t;
+  var s=Math.round(t/TURB_PER_STRUCT)||1;
+  document.getElementById('inp-struct').value=s;
+  updateDerived(t);
+  if(window.simHours)computeProduction(t);
+}
+
+function onStructChange(){
+  var s=Math.max(1,parseInt(document.getElementById('inp-struct').value)||1);
+  document.getElementById('inp-struct').value=s;
+  var t=s*TURB_PER_STRUCT;
+  document.getElementById('inp-turbines').value=t;
+  updateDerived(t);
+  if(window.simHours)computeProduction(t);
+}
+
+function updateDerived(t){
+  var s=Math.ceil(t/TURB_PER_STRUCT);
+  var area=(t*SIM_A_UNIT).toFixed(3);
+  document.getElementById('der-turbines').innerHTML='Surface : <strong>'+area+' m²</strong>';
+  document.getElementById('der-struct').innerHTML='= <strong>'+t+' turbines</strong> · Surface : <strong>'+area+' m²</strong>';
+}
+
+function fmt(v){
+  /* Format kWh: 0 decimals if >=10, 1 if >=1, show Wh otherwise */
+  if(v>=10)return v.toFixed(0);
+  if(v>=1)return v.toFixed(1);
+  return (v*1000).toFixed(0)+' Wh';
+}
+
+function computeProduction(N){
+  var k=SIM_K*N;
+  if(!window.simHours)return;
+  var hrs=window.simHours;
+
+  /* Real ERA5 */
+  var realMonthWh=Array(12).fill(0);
+  var realTotalWh=0;
+  for(var i=0;i<hrs.length;i++){
+    if(hrs[i].s<SIM_VMIN)continue;
+    var wh=k*hrs[i].s*hrs[i].s*hrs[i].s;
+    realMonthWh[hrs[i].m]+=wh;
+    realTotalWh+=wh;
+  }
+  var realAnnualKwh=realTotalWh/simTotalYears/1000;
+  var realMonthKwh=realMonthWh.map(function(v){return v/simTotalYears/1000;});
+
+  /* Simplified (monthly average speed) */
+  var daysInMonth=[31,28.25,31,30,31,30,31,31,30,31,30,31];
+  var avgMonthKwh=simMonthlyAvg.map(function(v,i){
+    if(v<SIM_VMIN)return 0;
+    return k*v*v*v*daysInMonth[i]*24/1000;
+  });
+  var avgAnnualKwh=avgMonthKwh.reduce(function(a,b){return a+b;},0);
+
+  /* Bonus & heures eq. */
+  var bonus=avgAnnualKwh>0?((realAnnualKwh-avgAnnualKwh)/avgAnnualKwh*100):0;
+  var vMoyAnn=simMonthlyAvg.reduce(function(a,b){return a+b;},0)/12;
+  var pRefW=k*vMoyAnn*vMoyAnn*vMoyAnn;
+  var heuresEq=pRefW>0?Math.round(realAnnualKwh*1000/pRefW):0;
+
+  /* KPIs */
+  document.getElementById('sk-real').textContent=fmt(realAnnualKwh).replace(' Wh','');
+  document.getElementById('sk-real').nextElementSibling.textContent=realAnnualKwh>=1?'kWh / an':'Wh / an';
+  document.getElementById('sk-avg').textContent=fmt(avgAnnualKwh).replace(' Wh','');
+  document.getElementById('sk-avg').nextElementSibling.textContent=avgAnnualKwh>=1?'kWh / an':'Wh / an';
+  document.getElementById('sk-bonus').textContent='+'+bonus.toFixed(1)+'%';
+  document.getElementById('sk-hours').textContent=heuresEq.toLocaleString('fr-FR');
+
+  /* Table */
+  var tbody=document.getElementById('prod-tbody');
+  tbody.innerHTML='';
+  for(var m=0;m<12;m++){
+    var b=avgMonthKwh[m]>0?((realMonthKwh[m]-avgMonthKwh[m])/avgMonthKwh[m]*100):0;
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td class="td-month">'+SIM_MONTHS[m]+'</td>'
+      +'<td class="td-avg">'+fmt(avgMonthKwh[m])+'</td>'
+      +'<td class="td-real">'+fmt(realMonthKwh[m])+'</td>'
+      +'<td class="td-bonus">'+( b>0?'+':'' )+b.toFixed(1)+'%</td>';
+    tbody.appendChild(tr);
+  }
+  /* Footer */
+  document.getElementById('ft-avg').textContent=fmt(avgAnnualKwh);
+  document.getElementById('ft-real').textContent=fmt(realAnnualKwh);
+  document.getElementById('ft-bonus').textContent='+'+bonus.toFixed(1)+'%';
+}
+
+/* ── Météo-France integration ────────────────────────────── */
+var MF_BASE='https://public-api.meteofrance.fr/public/DPClim/v1';
+var PROXY='/.netlify/functions/mf-proxy';
+var mfChartInst=null;
+var currentLat=null, currentLon=null;
+
+/* Helper: call the proxy */
+async function mfCall(url, method, payload){
+  var resp=await fetch(PROXY,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({url:url,method:method||'GET',payload:payload||null})
+  });
+  var ct=resp.headers.get('content-type')||'';
+  if(ct.includes('application/json')) return {ok:resp.ok, status:resp.status, data:await resp.json(), isJson:true};
+  return {ok:resp.ok, status:resp.status, data:await resp.text(), isJson:false};
+}
+
+function setMFStatus(msg){document.getElementById('mf-status').textContent=msg;}
+
+/* Haversine distance km */
+function haversine(lat1,lon1,lat2,lon2){
+  var R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+/* Extract département code from lat/lon via Nominatim reverse */
+async function getDept(lat,lon){
+  try{
+    var r=await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lon+'&format=json&accept-language=fr');
+    var g=await r.json();
+    var pc=(g.address&&g.address.postcode)||'';
+    var dept=pc.substring(0,2);
+    /* Corse special cases */
+    if(dept==='20'){
+      var pc3=pc.substring(0,3);
+      dept=pc3==='200'||pc3==='201'?'2A':'2B';
+    }
+    return dept||null;
+  }catch(e){return null;}
+}
+
+/* Find nearest open station in a département */
+async function findNearestStation(dept,lat,lon){
+  setMFStatus('⌛ Recherche des stations Météo-France du département '+dept+'…');
+  var url=MF_BASE+'/liste-stations/horaire?id-departement='+encodeURIComponent(dept);
+  var res=await mfCall(url);
+  if(!res.ok||!Array.isArray(res.data)){
+    throw new Error('Impossible de lister les stations (dept '+dept+'). Code '+res.status);
+  }
+  var stations=res.data.filter(function(s){return s.posteOuvert&&s.postePublic;});
+  if(!stations.length) throw new Error('Aucune station publique et ouverte dans ce département.');
+  /* Sort by distance */
+  stations.forEach(function(s){s._dist=haversine(lat,lon,s.lat,s.lon);});
+  stations.sort(function(a,b){return a._dist-b._dist;});
+  return stations[0];
+}
+
+/* Order hourly data for a station */
+async function orderMFData(stationId){
+  setMFStatus('⌛ Commande des données horaires (2019–2023)…');
+  var url=MF_BASE+'/commande/fichier';
+  var payload={
+    idStation:stationId,
+    dateDebutPeriode:'2019-01-01T00:00:00Z',
+    dateFinPeriode:'2023-12-31T23:00:00Z',
+    frequence:'horaire'
+  };
+  var res=await mfCall(url,'POST',payload);
+  if(!res.ok){
+    /* Try alternative payload format */
+    throw new Error('Erreur commande MF ('+res.status+'): '+JSON.stringify(res.data).substring(0,200));
+  }
+  /* The response should contain an order ID */
+  var orderId=res.data&&(res.data.idCmde||res.data.id||res.data);
+  if(!orderId) throw new Error('Pas d\'identifiant de commande dans la réponse: '+JSON.stringify(res.data).substring(0,200));
+  return String(orderId);
+}
+
+/* Poll until order is ready (max 20 attempts × 3s) */
+async function pollMFOrder(orderId){
+  for(var i=0;i<20;i++){
+    setMFStatus('⌛ Préparation des données… (tentative '+(i+1)+'/20)');
+    await new Promise(function(r){setTimeout(r,3000);});
+    var url=MF_BASE+'/commande/fichier?id-cmde='+encodeURIComponent(orderId);
+    var res=await mfCall(url);
+    /* Ready states vary: 'terminated', 'OK', status 201, or data directly */
+    if(res.status===201||res.status===200){
+      var state=res.data&&(res.data.etat||res.data.statut||res.data.status||'');
+      if(state==='Terminé'||state==='terminated'||state==='OK'||state==='ok'||!state){
+        return true;
+      }
+    }
+  }
+  throw new Error('Timeout : les données MF ne sont pas prêtes après 60 secondes.');
+}
+
+/* Download CSV data */
+async function downloadMFData(orderId){
+  setMFStatus('⌛ Téléchargement du fichier de données…');
+  var url=MF_BASE+'/commande/fichier/telecharger?id-cmde='+encodeURIComponent(orderId);
+  var res=await mfCall(url);
+  if(!res.ok) throw new Error('Erreur téléchargement ('+res.status+')');
+  return res.data; /* CSV text */
+}
+
+/* Parse MF hourly CSV → [{s, d, m}] */
+function parseMFCsv(csv){
+  var lines=csv.trim().split('\n');
+  if(lines.length<2) throw new Error('Fichier CSV vide ou invalide.');
+  /* Detect separator (';' or ',') */
+  var sep=lines[0].includes(';')?';':',';
+  var headers=lines[0].split(sep).map(function(h){return h.trim().replace(/["\r]/g,'').toUpperCase();});
+
+  /* Column indices — MF uses various names */
+  function col(){
+    for(var i=0;i<arguments.length;i++){
+      var idx=headers.indexOf(arguments[i]);
+      if(idx>=0)return idx;
+    }
+    return -1;
+  }
+  var iDate=col('AAAAMMJJHH','DATE','DATETIME','DATEHEURE');
+  var iFF=col('FF','FF_H','FF10M','VITESSE_VENT','WIND_SPEED');
+  var iDD=col('DD','DD_H','DD10M','DIRECTION_VENT','WIND_DIR');
+
+  if(iDate<0||iFF<0) throw new Error('Colonnes introuvables. En-têtes : '+headers.join(', '));
+
+  var result=[];
+  for(var i=1;i<lines.length;i++){
+    var cols=lines[i].split(sep).map(function(c){return c.trim().replace(/["\r]/g,'');});
+    if(cols.length<Math.max(iDate,iFF)+1) continue;
+    var dateStr=cols[iDate];
+    var month=null;
+    if(dateStr.length>=8){
+      /* AAAAMMJJHH → month = chars 4-5 */
+      month=parseInt(dateStr.substring(4,6),10)-1;
+    }
+    var speed=parseFloat(cols[iFF]);
+    var dir=iDD>=0?parseFloat(cols[iDD]):NaN;
+    if(isNaN(speed)||month===null||month<0||month>11) continue;
+    result.push({s:speed,d:isNaN(dir)?-1:dir,m:month});
+  }
+  return result;
+}
+
+/* Compute stats from MF hourly data (same as ERA5 pipeline) */
+function computeMFStats(data){
+  var mo=Array(12).fill(null).map(function(){return{s:0,n:0};});
+  var secCts=Array(16).fill(0);
+  var sm=0,cl=0;
+  data.forEach(function(x){
+    sm+=x.s; if(x.s<2)cl++;
+    mo[x.m].s+=x.s; mo[x.m].n++;
+    if(x.d>=0){var sec=d2s(x.d);secCts[sec]++;}
+  });
+  var n=data.length;
+  var avg=sm/n, cp=(cl/n)*100;
+  var ma=mo.map(function(m){return m.n?m.s/m.n:0;});
+  var ds=secCts.indexOf(Math.max.apply(null,secCts));
+
+  /* Days by threshold (group by day) */
+  var dayMap={};
+  data.forEach(function(x,i){
+    /* We don't have a date key here, use running index grouped by 24h */
+    /* Instead compute from monthly hours — approximate */
+  });
+  /* Simple approach: count hours ≥5m/s and ≥10m/s, convert to days */
+  var h5=0,h10=0;
+  data.forEach(function(x){if(x.s>=5)h5++;if(x.s>=10)h10++;});
+  var years=Math.max(1,n/8760);
+  var d5=h5/24/years, d10=h10/24/years;
+
+  return {avg:avg,ma:ma,dir:D16[ds],d5:d5,d10:d10,n:n,years:years};
+}
+
+/* Main entry point */
+async function loadMFStation(){
+  if(!chosen){setMFStatus('⚠️ Veuillez d\'abord analyser une adresse.');return;}
+  var btn=document.getElementById('mf-btn');
+  btn.disabled=true; btn.textContent='Chargement…';
+  document.getElementById('mf-badge').style.display='none';
+  document.getElementById('mf-metrics').style.display='none';
+  document.getElementById('mf-chart-card').style.display='none';
+
+  try{
+    /* 1. Département */
+    var dept=await getDept(chosen.lat,chosen.lon);
+    if(!dept) throw new Error('Impossible de déterminer le département depuis les coordonnées.');
+
+    /* 2. Station la plus proche */
+    var station=await findNearestStation(dept,chosen.lat,chosen.lon);
+    var dist=station._dist.toFixed(1);
+    setMFStatus('📡 Station trouvée : '+station.nom+' ('+dist+' km)');
+
+    /* 3. Commande */
+    var orderId=await orderMFData(station.id);
+
+    /* 4. Poll */
+    await pollMFOrder(orderId);
+
+    /* 5. Téléchargement */
+    var csv=await downloadMFData(orderId);
+
+    /* 6. Parse + stats */
+    setMFStatus('⌛ Analyse des données…');
+    var mfData=parseMFCsv(csv);
+    if(mfData.length<100) throw new Error('Trop peu de données valides ('+mfData.length+' lignes).');
+    var mfStats=computeMFStats(mfData);
+
+    /* 7. Display */
+    showMFResults(station,dist,mfStats,dept);
+    setMFStatus('');
+    btn.textContent='Recharger';
+
+  }catch(e){
+    setMFStatus('❌ '+e.message);
+    console.error('MF Error:',e);
+    btn.textContent='Réessayer';
+  }
+  btn.disabled=false;
+}
+
+function showMFResults(station,dist,mfStats,dept){
+  /* Badge */
+  document.getElementById('mf-sname').textContent=station.nom;
+  document.getElementById('mf-smeta').textContent=
+    'ID '+station.id+' · alt. '+station.alt+'m · '+dist+' km du site · dept '+dept
+    +' · '+Math.round(mfStats.n/8760*10)/10+' ans de données';
+  document.getElementById('mf-badge').style.display='flex';
+
+  /* Get ERA5 stats from globals */
+  var eraAvg=parseFloat(document.getElementById('v0').textContent)||0;
+  var eraDir=document.getElementById('v2').textContent||'—';
+  var eraD5=parseInt(document.getElementById('d5').textContent)||0;
+  var eraD10=parseInt(document.getElementById('d10').textContent)||0;
+
+  function delta(mf,era,unit){
+    var d=mf-era, pct=(era>0?(d/era*100):0);
+    var cls=Math.abs(d)<0.05?'neu':d>0?'pos':'neg';
+    return '<span class="cmc-delta '+cls+'">'+(d>=0?'+':'')+d.toFixed(1)+' '+unit+' (ERA5 : '+era.toFixed(1)+')</span>';
+  }
+
+  document.getElementById('cm-era-avg').textContent=eraAvg.toFixed(1);
+  document.getElementById('cm-mf-avg').textContent=mfStats.avg.toFixed(1);
+  document.getElementById('cm-delta-avg').innerHTML=delta(mfStats.avg,eraAvg,'m/s');
+
+  document.getElementById('cm-era-dir').textContent=eraDir;
+  document.getElementById('cm-mf-dir').textContent=mfStats.dir;
+
+  document.getElementById('cm-era-d5').textContent=eraD5;
+  document.getElementById('cm-mf-d5').textContent=Math.round(mfStats.d5);
+  document.getElementById('cm-delta-d5').innerHTML=delta(mfStats.d5,eraD5,'j');
+
+  document.getElementById('cm-era-d10').textContent=eraD10;
+  document.getElementById('cm-mf-d10').textContent=Math.round(mfStats.d10);
+  document.getElementById('cm-delta-d10').innerHTML=delta(mfStats.d10,eraD10,'j');
+
+  document.getElementById('mf-metrics').style.display='grid';
+
+  /* Chart */
+  drawMFComparison(simMonthlyAvg,mfStats.ma);
+
+  /* Interpretation note */
+  var diff=mfStats.avg-eraAvg;
+  var note='';
+  if(Math.abs(diff)<0.3){
+    note='✅ ERA5 et la station MF sont en <strong>très bon accord</strong> (écart < 0,3 m/s). La réanalyse est fiable pour ce site.';
+  } else if(diff>0){
+    note='📈 La station MF mesure <strong>'+diff.toFixed(1)+' m/s de plus</strong> qu\'ERA5. '
+      +'ERA5 sous-estime probablement le potentiel réel — effet de terrain local, exposition favorable, ou altitude.';
+  } else {
+    note='📉 La station MF mesure <strong>'+Math.abs(diff).toFixed(1)+' m/s de moins</strong> qu\'ERA5. '
+      +'La station est peut-être dans un site abrité (vallée, zone urbaine). Le site d\'installation peut être plus venteux.';
+  }
+  document.getElementById('mf-note').innerHTML=note;
+  document.getElementById('mf-chart-card').style.display='block';
+}
+
+function drawMFComparison(eraMonthly,mfMonthly){
+  if(mfChartInst)mfChartInst.destroy();
+  mfChartInst=new Chart(document.getElementById('mfch'),{
+    type:'bar',
+    data:{
+      labels:['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
+      datasets:[
+        {
+          label:'ERA5',
+          data:eraMonthly.map(function(v){return parseFloat(v.toFixed(2));}),
+          backgroundColor:'rgba(26,95,168,.75)',
+          borderRadius:4,borderSkipped:false
+        },
+        {
+          label:'Station MF',
+          data:mfMonthly.map(function(v){return parseFloat(v.toFixed(2));}),
+          backgroundColor:'rgba(26,148,105,.78)',
+          borderRadius:4,borderSkipped:false
+        }
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+c.parsed.y.toFixed(2)+' m/s';}}}
+      },
+      scales:{
+        x:{ticks:{color:'#94A3B8',font:{size:10},autoSkip:false,maxRotation:0},grid:{display:false},border:{display:false}},
+        y:{min:0,ticks:{color:'#94A3B8',font:{size:10},callback:function(v){return v.toFixed(1);}},grid:{color:'rgba(0,0,0,0.05)'},border:{display:false}}
+      }
+    }
+  });
+}
+
+/* Boot */
+ainp.value='Theix-Noyalo, Morbihan, France';
+doAnalysis();
+</script>
+</body>
+</html>
