@@ -56,7 +56,7 @@ exports.handler = async (event) => {
     const fetchOpts = {
       method,
       headers: {
-        'Authorization': `Bearer ${MF_KEY}`,
+        'apikey': MF_KEY,
         'accept': 'application/json'
       }
     };
