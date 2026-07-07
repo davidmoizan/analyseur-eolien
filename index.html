@@ -1194,7 +1194,7 @@ async function findNearestStation(dept,lat,lon){
   /* Sort by distance */
   stations.forEach(function(s){s._dist=haversine(lat,lon,s.lat,s.lon);});
   stations.sort(function(a,b){return a._dist-b._dist;});
-  return stations[0];
+  return stations.slice(0,3);
 }
 
 /* Order hourly data for a station */
@@ -1239,16 +1239,25 @@ async function orderMFData(stationId){
 
 async function pollAndDownloadAll(orderIds){
   var allData=[];
+  var loaded=0;
   for(var i=0;i<orderIds.length;i++){
     var item=orderIds[i];
     setMFStatus('⌛ Attente données '+item.year+'…');
-    await pollMFOrder(item.id);
+    var status=await pollMFOrder(item.id);
+    if(status==='failed'){
+      setMFStatus('⚠️ '+item.year+' : pas de données disponibles, on passe…');
+      await new Promise(function(r){setTimeout(r,1000);});
+      continue;
+    }
     setMFStatus('⌛ Téléchargement '+item.year+'…');
     var csv=await downloadMFData(item.id);
     var parsed=parseMFCsv(csv);
     allData=allData.concat(parsed);
+    loaded++;
     setMFStatus('✅ '+item.year+' OK ('+parsed.length+' mois)');
   }
+  if(allData.length===0) throw new Error('Aucune donnée disponible pour cette station sur 2019–2023. Essayez une autre adresse ou un site plus proche d\'une station active.');
+  setMFStatus('✅ '+loaded+' année(s) chargée(s) — '+allData.length+' points au total');
   return allData;
 }
 
@@ -1258,21 +1267,24 @@ async function pollMFOrder(orderId){
     await new Promise(function(r){setTimeout(r,5000);});
     var url=MF_BASE+'/commande/fichier?id-cmde='+orderId;
     var res=await mfCall(url);
-    var rawState=JSON.stringify(res.data).substring(0,120);
-    setMFStatus('⌛ Préparation… tentative '+(i+1)+'/40 · statut: '+rawState);
-    /* Prêt si : 201, ou état terminal reconnu */
-    if(res.status===201) return true;
+    var rawStr=typeof res.data==='string'?res.data:JSON.stringify(res.data);
+    setMFStatus('⌛ Préparation… tentative '+(i+1)+'/40 · statut: '+rawStr.substring(0,120));
+
+    /* Échec explicite MF → on abandonne cette commande */
+    if(rawStr.toLowerCase().includes('échec')||rawStr.toLowerCase().includes('echec')
+      ||rawStr.toLowerCase().includes('erreur')||rawStr.toLowerCase().includes('error')){
+      return 'failed';
+    }
+    /* Prêt */
+    if(res.status===201) return 'ok';
     if(res.status===200){
       var state=res.data&&(res.data.etat||res.data.statut||res.data.status||res.data.state||'');
       var stateStr=String(state).toLowerCase();
-      if(stateStr==='terminé'||stateStr==='termine'||stateStr==='terminated'
-        ||stateStr==='ok'||stateStr==='done'||stateStr==='finished'
-        ||stateStr===''||res.data===null){
-        return true;
-      }
+      if(stateStr.includes('termin')||stateStr==='ok'||stateStr==='done'
+        ||stateStr===''||res.data===null) return 'ok';
     }
   }
-  throw new Error('Timeout (200s) — dernier statut MF visible dans la console.');
+  return 'failed';
 }
 
 /* Download CSV data */
@@ -1366,23 +1378,31 @@ async function loadMFStation(){
     var dept=await getDept(chosen.lat,chosen.lon);
     if(!dept) throw new Error('Impossible de déterminer le département depuis les coordonnées.');
 
-    /* 2. Station la plus proche */
-    var station=await findNearestStation(dept,chosen.lat,chosen.lon);
-    var dist=station._dist.toFixed(1);
-    setMFStatus('📡 Station trouvée : '+station.nom+' ('+dist+' km)');
+    /* 2. Top 3 stations les plus proches */
+    var stations=await findNearestStation(dept,chosen.lat,chosen.lon);
+    var mfData=null, station=null;
 
-    /* 3. Commandes (1 par année) */
-    var orderIds=await orderMFData(station.id);
+    for(var si=0;si<stations.length;si++){
+      var s=stations[si];
+      setMFStatus('📡 Tentative station '+( si+1)+'/'+stations.length+' : '+s.nom+' ('+s._dist.toFixed(1)+' km)');
+      try{
+        var orderIds=await orderMFData(s.id);
+        var data=await pollAndDownloadAll(orderIds);
+        if(data.length>0){mfData=data;station=s;break;}
+      }catch(se){
+        setMFStatus('⚠️ Station '+s.nom+' : '+se.message.substring(0,80)+' — essai suivant…');
+        await new Promise(function(r){setTimeout(r,1500);});
+      }
+    }
 
-    /* 4. Poll + téléchargement pour chaque année */
-    var mfData=await pollAndDownloadAll(orderIds);
-    /* 5. Vérification et stats */
+    if(!mfData||!station) throw new Error('Aucune des '+stations.length+' stations proches n\'a de données disponibles pour cette période.');
+
+    /* 3. Stats */
     setMFStatus('⌛ Analyse des données…');
-    if(mfData.length<100) throw new Error('Trop peu de données valides ('+mfData.length+' lignes).');
     var mfStats=computeMFStats(mfData);
 
-    /* 7. Display */
-    showMFResults(station,dist,mfStats,dept);
+    /* 4. Affichage */
+    showMFResults(station,station._dist.toFixed(1),mfStats,dept);
     setMFStatus('');
     btn.textContent='Recharger';
 
