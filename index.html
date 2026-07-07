@@ -1199,21 +1199,21 @@ async function findNearestStation(dept,lat,lon){
 
 /* Order hourly data for a station */
 async function orderMFData(stationId){
-  setMFStatus('⌛ Commande des données horaires année par année (2019–2023)…');
+  setMFStatus('⌛ Commande des données mensuelles (2019–2023)…');
   var years=[2019,2020,2021,2022,2023];
   var orderIds=[];
   for(var i=0;i<years.length;i++){
     var y=years[i];
-    var url=MF_BASE+'/commande-station/horaire'
+    var url=MF_BASE+'/commande-station/mensuelle'
       +'?id-station='+encodeURIComponent(stationId)
       +'&date-deb-periode='+y+'-01-01T00%3A00%3A00Z'
       +'&date-fin-periode='+y+'-12-31T23%3A00%3A00Z';
     var res=await mfCall(url,'GET',null);
-    if(!res.ok) throw new Error('Erreur commande MF '+y+' ('+res.status+'): '+JSON.stringify(res.data).substring(0,200));
+    if(!res.ok) throw new Error('Erreur commande MF '+y+' ('+res.status+'): '+JSON.stringify(res.data).substring(0,300));
     var orderId=res.data&&(res.data.elaboreProduit||res.data.idCmde||res.data.id||res.data);
-    if(!orderId) throw new Error('Pas d\'ID de commande pour '+y+': '+JSON.stringify(res.data).substring(0,200));
-    orderIds.push(String(orderId));
-    setMFStatus('⌛ Commande passée pour '+y+' ('+( i+1)+'/5)…');
+    if(!orderId) throw new Error('Pas d\'ID pour '+y+': '+JSON.stringify(res.data).substring(0,300));
+    orderIds.push({id:String(orderId),year:y});
+    setMFStatus('⌛ Commande passée pour '+y+' ('+(i+1)+'/5)…');
   }
   return orderIds;
 }
@@ -1221,15 +1221,14 @@ async function orderMFData(stationId){
 async function pollAndDownloadAll(orderIds){
   var allData=[];
   for(var i=0;i<orderIds.length;i++){
-    var id=orderIds[i];
-    var year=2019+i;
-    setMFStatus('⌛ Attente données '+year+'… (commande '+id+')');
-    await pollMFOrder(id);
-    setMFStatus('⌛ Téléchargement '+year+'…');
-    var csv=await downloadMFData(id);
+    var item=orderIds[i];
+    setMFStatus('⌛ Attente données '+item.year+'…');
+    await pollMFOrder(item.id);
+    setMFStatus('⌛ Téléchargement '+item.year+'…');
+    var csv=await downloadMFData(item.id);
     var parsed=parseMFCsv(csv);
     allData=allData.concat(parsed);
-    setMFStatus('✅ '+year+' chargé ('+parsed.length+' heures)');
+    setMFStatus('✅ '+item.year+' OK ('+parsed.length+' mois)');
   }
   return allData;
 }
@@ -1237,19 +1236,24 @@ async function pollAndDownloadAll(orderIds){
 /* Poll until order is ready (max 20 attempts × 3s) */
 async function pollMFOrder(orderId){
   for(var i=0;i<40;i++){
-    setMFStatus('⌛ Préparation des données… (tentative '+(i+1)+'/40)');
     await new Promise(function(r){setTimeout(r,5000);});
     var url=MF_BASE+'/commande/fichier?id-cmde='+encodeURIComponent(orderId);
     var res=await mfCall(url);
-    /* Ready states vary: 'terminated', 'OK', status 201, or data directly */
-    if(res.status===201||res.status===200){
-      var state=res.data&&(res.data.etat||res.data.statut||res.data.status||'');
-      if(state==='Terminé'||state==='terminated'||state==='OK'||state==='ok'||!state){
+    var rawState=JSON.stringify(res.data).substring(0,120);
+    setMFStatus('⌛ Préparation… tentative '+(i+1)+'/40 · statut: '+rawState);
+    /* Prêt si : 201, ou état terminal reconnu */
+    if(res.status===201) return true;
+    if(res.status===200){
+      var state=res.data&&(res.data.etat||res.data.statut||res.data.status||res.data.state||'');
+      var stateStr=String(state).toLowerCase();
+      if(stateStr==='terminé'||stateStr==='termine'||stateStr==='terminated'
+        ||stateStr==='ok'||stateStr==='done'||stateStr==='finished'
+        ||stateStr===''||res.data===null){
         return true;
       }
     }
   }
-  throw new Error('Timeout : les données MF ne sont pas prêtes après 200 secondes.');
+  throw new Error('Timeout (200s) — dernier statut MF visible dans la console.');
 }
 
 /* Download CSV data */
@@ -1261,15 +1265,13 @@ async function downloadMFData(orderId){
   return res.data; /* CSV text */
 }
 
-/* Parse MF hourly CSV → [{s, d, m}] */
+/* Parse MF CSV (mensuel ou horaire) → [{s, d, m}] */
 function parseMFCsv(csv){
   var lines=csv.trim().split('\n');
   if(lines.length<2) throw new Error('Fichier CSV vide ou invalide.');
-  /* Detect separator (';' or ',') */
   var sep=lines[0].includes(';')?';':',';
   var headers=lines[0].split(sep).map(function(h){return h.trim().replace(/["\r]/g,'').toUpperCase();});
 
-  /* Column indices — MF uses various names */
   function col(){
     for(var i=0;i<arguments.length;i++){
       var idx=headers.indexOf(arguments[i]);
@@ -1277,9 +1279,9 @@ function parseMFCsv(csv){
     }
     return -1;
   }
-  var iDate=col('AAAAMMJJHH','DATE','DATETIME','DATEHEURE');
-  var iFF=col('FF','FF_H','FF10M','VITESSE_VENT','WIND_SPEED');
-  var iDD=col('DD','DD_H','DD10M','DIRECTION_VENT','WIND_DIR');
+  var iDate=col('AAAAMMJJHH','AAAAMM','DATE','DATETIME','DATEHEURE','AAAAMMJJ');
+  var iFF=col('FF','FF_H','FF10M','VITESSE_VENT','WIND_SPEED','FXY','FFM');
+  var iDD=col('DD','DD_H','DD10M','DIRECTION_VENT','WIND_DIR','DDM');
 
   if(iDate<0||iFF<0) throw new Error('Colonnes introuvables. En-têtes : '+headers.join(', '));
 
@@ -1289,13 +1291,13 @@ function parseMFCsv(csv){
     if(cols.length<Math.max(iDate,iFF)+1) continue;
     var dateStr=cols[iDate];
     var month=null;
-    if(dateStr.length>=8){
-      /* AAAAMMJJHH → month = chars 4-5 */
+    /* Format AAAAMM (mensuel) ou AAAAMMJJHH (horaire) ou AAAAMMJJ */
+    if(dateStr.length>=6){
       month=parseInt(dateStr.substring(4,6),10)-1;
     }
-    var speed=parseFloat(cols[iFF]);
-    var dir=iDD>=0?parseFloat(cols[iDD]):NaN;
-    if(isNaN(speed)||month===null||month<0||month>11) continue;
+    var speed=parseFloat(cols[iFF].replace(',','.'));
+    var dir=iDD>=0?parseFloat(cols[iDD].replace(',','.')):NaN;
+    if(isNaN(speed)||speed<0||month===null||month<0||month>11) continue;
     result.push({s:speed,d:isNaN(dir)?-1:dir,m:month});
   }
   return result;
