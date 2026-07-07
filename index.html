@@ -461,7 +461,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="sim-header-icon">⚡</div>
       <div class="sim-header-text">
         <div class="sim-header-title">Simulateur de production</div>
-        <div class="sim-header-sub">CP = 0,3 · A = 0,297 m²/turbine · ρ = 1,225 kg/m³ · seuil = 2 m/s</div>
+        <div class="sim-header-sub">CP = 0,3 · A = 0,297 m²/turbine · ρ = 1,225 kg/m³ · seuil = 2 m/s · écrêtage à P_nominale</div>
       </div>
     </div>
     <div class="sim-body">
@@ -485,6 +485,15 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
             <span class="sim-num-unit">structures</span>
           </div>
           <div class="sim-derived" id="der-struct">= <strong>6 turbines</strong> · Surface : <strong>1,782 m²</strong></div>
+        </div>
+        <div class="sim-input-block">
+          <div class="sim-input-label">Puissance nominale</div>
+          <div class="sim-input-sub">Puissance max par turbine (fiche fabricant)</div>
+          <div class="sim-input-row">
+            <input type="number" id="inp-pnom" class="sim-num" min="1" max="99999" value="45" oninput="onPnomChange()">
+            <span class="sim-num-unit">W / turbine</span>
+          </div>
+          <div class="sim-derived" id="der-pnom">Vitesse nominale : <strong>9,4 m/s</strong></div>
         </div>
       </div>
 
@@ -903,6 +912,7 @@ async function runAnalysis(lat,lon,dn){
     /* Init inputs and run first computation */
     var initT=parseInt(document.getElementById('inp-turbines').value)||6;
     updateDerived(initT);
+    onPnomChange();
     computeProduction(initT);
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
@@ -1042,6 +1052,17 @@ function drawMonthly(avg){
 var TURB_PER_STRUCT=6;
 var SIM_MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
+function getPnom(){ return parseFloat(document.getElementById('inp-pnom').value)||45; }
+function getVnom(pnom){ return Math.pow(pnom/SIM_K, 1/3); }
+
+function onPnomChange(){
+  var pnom=getPnom();
+  var vnom=getVnom(pnom);
+  document.getElementById('der-pnom').innerHTML='Vitesse nominale : <strong>'+vnom.toFixed(1)+' m/s</strong>';
+  var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  if(window.simHours) computeProduction(N);
+}
+
 function onTurbinesChange(){
   var t=Math.max(1,parseInt(document.getElementById('inp-turbines').value)||1);
   document.getElementById('inp-turbines').value=t;
@@ -1065,6 +1086,8 @@ function updateDerived(t){
   var area=(t*SIM_A_UNIT).toFixed(3);
   document.getElementById('der-turbines').innerHTML='Surface : <strong>'+area+' m²</strong>';
   document.getElementById('der-struct').innerHTML='= <strong>'+t+' turbines</strong> · Surface : <strong>'+area+' m²</strong>';
+  /* Refresh vnom display */
+  onPnomChange();
 }
 
 function fmt(v){
@@ -1076,34 +1099,38 @@ function fmt(v){
 
 function computeProduction(N){
   var k=SIM_K*N;
+  var pnom=getPnom();          /* W par turbine */
+  var pnomTotal=pnom*N;        /* W total installation */
+  var vnom=getVnom(pnom);      /* m/s vitesse nominale */
   if(!window.simHours)return;
   var hrs=window.simHours;
 
-  /* Real ERA5 */
+  /* Real ERA5 avec écrêtage à P_nominale */
   var realMonthWh=Array(12).fill(0);
   var realTotalWh=0;
   for(var i=0;i<hrs.length;i++){
     if(hrs[i].s<SIM_VMIN)continue;
-    var wh=k*hrs[i].s*hrs[i].s*hrs[i].s;
-    realMonthWh[hrs[i].m]+=wh;
-    realTotalWh+=wh;
+    var p=k*hrs[i].s*hrs[i].s*hrs[i].s;
+    if(p>pnomTotal) p=pnomTotal; /* écrêtage */
+    realMonthWh[hrs[i].m]+=p;
+    realTotalWh+=p;
   }
   var realAnnualKwh=realTotalWh/simTotalYears/1000;
   var realMonthKwh=realMonthWh.map(function(v){return v/simTotalYears/1000;});
 
-  /* Simplified (monthly average speed) */
+  /* Simplified avec écrêtage */
   var daysInMonth=[31,28.25,31,30,31,30,31,31,30,31,30,31];
   var avgMonthKwh=simMonthlyAvg.map(function(v,i){
     if(v<SIM_VMIN)return 0;
-    return k*v*v*v*daysInMonth[i]*24/1000;
+    var p=k*v*v*v;
+    if(p>pnomTotal) p=pnomTotal;
+    return p*daysInMonth[i]*24/1000;
   });
   var avgAnnualKwh=avgMonthKwh.reduce(function(a,b){return a+b;},0);
 
-  /* Bonus & heures eq. */
+  /* Bonus & heures eq. basées sur P_nominale */
   var bonus=avgAnnualKwh>0?((realAnnualKwh-avgAnnualKwh)/avgAnnualKwh*100):0;
-  var vMoyAnn=simMonthlyAvg.reduce(function(a,b){return a+b;},0)/12;
-  var pRefW=k*vMoyAnn*vMoyAnn*vMoyAnn;
-  var heuresEq=pRefW>0?Math.round(realAnnualKwh*1000/pRefW):0;
+  var heuresEq=pnomTotal>0?Math.round(realAnnualKwh*1000/pnomTotal):0;
 
   /* KPIs */
   document.getElementById('sk-real').textContent=fmt(realAnnualKwh).replace(' Wh','');
