@@ -1236,9 +1236,9 @@ async function pollAndDownloadAll(orderIds){
 
 /* Poll until order is ready (max 20 attempts × 3s) */
 async function pollMFOrder(orderId){
-  for(var i=0;i<20;i++){
-    setMFStatus('⌛ Préparation des données… (tentative '+(i+1)+'/20)');
-    await new Promise(function(r){setTimeout(r,3000);});
+  for(var i=0;i<40;i++){
+    setMFStatus('⌛ Préparation des données… (tentative '+(i+1)+'/40)');
+    await new Promise(function(r){setTimeout(r,5000);});
     var url=MF_BASE+'/commande/fichier?id-cmde='+encodeURIComponent(orderId);
     var res=await mfCall(url);
     /* Ready states vary: 'terminated', 'OK', status 201, or data directly */
@@ -1249,7 +1249,7 @@ async function pollMFOrder(orderId){
       }
     }
   }
-  throw new Error('Timeout : les données MF ne sont pas prêtes après 60 secondes.');
+  throw new Error('Timeout : les données MF ne sont pas prêtes après 200 secondes.');
 }
 
 /* Download CSV data */
