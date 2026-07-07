@@ -1207,7 +1207,7 @@ async function orderMFData(stationId){
     var url=MF_BASE+'/commande-station/mensuelle'
       +'?id-station='+encodeURIComponent(stationId)
       +'&date-deb-periode='+y+'-01-01T00%3A00%3A00Z'
-      +'&date-fin-periode='+y+'-12-31T23%3A00%3A00Z';
+      +'&date-fin-periode='+y+'-12-31T00%3A00%3A00Z';
     var res=await mfCall(url,'GET',null);
     if(!res.ok) throw new Error('Erreur commande MF '+y+' ('+res.status+'): '+JSON.stringify(res.data).substring(0,300));
     var orderId=res.data&&(res.data.elaboreProduit||res.data.idCmde||res.data.id||res.data);
