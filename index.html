@@ -1217,8 +1217,11 @@ async function orderMFData(stationId){
     if(typeof raw==='number') orderId=raw;
     else if(typeof raw==='string'&&/^\d+$/.test(raw.trim())) orderId=parseInt(raw.trim());
     else if(typeof raw==='object'&&raw!==null){
-      orderId=raw.elaboreProduit||raw.idCmde||raw.id||raw.numero||raw.numCommande||null;
-      /* Si toujours rien, chercher la première valeur numérique */
+      /* Champ exact renvoyé par MF */
+      var epdr=raw.elaboreProduitAvecDemandeResponse;
+      if(epdr&&epdr['return']) orderId=epdr['return'];
+      else orderId=raw.elaboreProduit||raw.idCmde||raw.id||raw.numero||raw.numCommande||null;
+      /* Fallback : première valeur numérique */
       if(orderId===null){
         var vals=Object.values(raw);
         for(var j=0;j<vals.length;j++){
