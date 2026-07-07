@@ -622,7 +622,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="mf-chart-card" id="mf-chart-card" style="display:none;">
         <div class="sec-lbl" style="margin-bottom:.75rem;">Vitesse moyenne mensuelle · ERA5 vs station MF</div>
         <div class="mf-legend">
-          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>ERA5 (réanalyse)</div>
+          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>ERA5-Land (réanalyse ~9 km)</div>
           <div class="li"><div class="ld" style="background:rgba(26,148,105,.85)"></div>Station MF (mesure sol)</div>
         </div>
         <div class="mf-chart-wrap" style="margin-top:.75rem;">
@@ -809,7 +809,7 @@ async function runAnalysis(lat,lon,dn){
   gmap.setView([lat,lon],11,{animate:true});
   try{
     var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
-      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=UTC';
+      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=UTC&models=era5_land';
     var res=await fetch(url),meteo=await res.json();
     if(!meteo.hourly){setSt('Erreur lors de la récupération des données météo.');return;}
     setSt('⌛ Calcul des statistiques…');
@@ -863,7 +863,7 @@ async function runAnalysis(lat,lon,dn){
     var mo5avg=mo5.map(function(v){return parseFloat((v/years).toFixed(1));});
     var mo10avg=mo10.map(function(v){return parseFloat((v/years).toFixed(1));});
 
-    document.getElementById('lloc').textContent='📍 '+place+' — '+lat.toFixed(3)+', '+lon.toFixed(3)+' — ERA5 2019–2023 ('+Math.round(n/1000)+'k points)';
+    document.getElementById('lloc').textContent='📍 '+place+' — '+lat.toFixed(3)+', '+lon.toFixed(3)+' — ERA5-Land 2019–2023 ('+Math.round(n/1000)+'k points)';
     document.getElementById('v0').textContent=avg.toFixed(1)+' m/s';
     document.getElementById('v1').textContent=mx.toFixed(1)+' m/s';
     document.getElementById('v2').textContent=D16[ds];
