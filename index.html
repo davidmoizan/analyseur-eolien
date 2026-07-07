@@ -308,6 +308,54 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
 
 .mf-note{padding:.75rem 1rem;background:#F0FDF4;border-radius:var(--r-md);font-size:12px;color:#14532d;line-height:1.6;}
 .mf-note strong{font-weight:700;}
+
+/* ── ROI ──────────────────────────────────────────────────── */
+.roi-section{
+  display:none;margin-top:1.25rem;
+  background:var(--card);border-radius:var(--r-lg);
+  border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);overflow:hidden;
+}
+.roi-header{
+  background:linear-gradient(135deg,#1a0533 0%,#3b0764 55%,#6d28d9 100%);
+  padding:1rem 1.25rem;display:flex;align-items:center;gap:12px;
+}
+.roi-header-icon{font-size:22px;}
+.roi-header-text{color:#fff;}
+.roi-header-title{font-size:14px;font-weight:700;letter-spacing:-.2px;}
+.roi-header-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;}
+.roi-body{padding:1.25rem;}
+.roi-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.875rem;margin-bottom:1.25rem;}
+.roi-input-block{background:var(--bg);border-radius:var(--r-md);padding:.875rem 1rem;}
+.roi-input-label{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.roi-input-sub{font-size:11px;color:var(--muted);margin-bottom:.5rem;line-height:1.4;}
+.roi-input-row{display:flex;align-items:center;gap:.5rem;}
+.roi-num{
+  width:100px;padding:7px 10px;border:1.5px solid var(--border-med);border-radius:var(--r-sm);
+  font-size:17px;font-weight:800;color:#6d28d9;text-align:right;
+  background:#fff;outline:none;transition:border-color .15s,box-shadow .15s;
+}
+.roi-num:focus{border-color:#6d28d9;box-shadow:0 0 0 3px rgba(109,40,217,.12);}
+.roi-num-unit{font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap;}
+.roi-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:1.25rem;}
+.rk{border-radius:var(--r-md);padding:.875rem 1rem;position:relative;overflow:hidden;border:1.5px solid var(--border);}
+.rk-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0;background:var(--rk-color,#6d28d9);}
+.rk-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:5px;}
+.rk-val{font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1;}
+.rk-unit{font-size:11px;color:var(--muted);margin-top:3px;}
+.roi-badges{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;}
+.roi-badge{flex:1;min-width:160px;border-radius:var(--r-md);padding:1rem 1.25rem;border:1.5px solid var(--border);text-align:center;}
+.roi-badge-icon{font-size:24px;margin-bottom:4px;}
+.roi-badge-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;}
+.roi-badge-val{font-size:28px;font-weight:900;letter-spacing:-1px;line-height:1;}
+.roi-badge-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.roi-badge.avg-b{border-color:rgba(148,163,184,.4);background:#F8FAFC;}
+.roi-badge.avg-b .roi-badge-val{color:#64748B;}
+.roi-badge.real-b{border-color:rgba(26,95,168,.25);background:var(--blue-light);}
+.roi-badge.real-b .roi-badge-val{color:var(--blue);}
+.roi-chart-card{background:var(--card);border-radius:var(--r-md);padding:1rem;border:1.5px solid var(--border);box-shadow:var(--sh-sm);}
+.roi-chart-wrap{position:relative;height:260px;}
+.roi-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:.75rem;}
+
 .leaflet-popup-tip-container{display:none;}
 .leaflet-popup-content{margin:10px 14px!important;font-family:inherit!important;font-size:13px!important;line-height:1.7!important;}
 .wri{background:transparent!important;border:none!important;box-shadow:none!important;}
@@ -586,6 +634,91 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
     </div>
   </div>
 
+  <!-- ── ROI ───────────────────────────────────────────────── -->
+  <div class="roi-section" id="roi-section">
+    <div class="roi-header">
+      <div class="roi-header-icon">📈</div>
+      <div class="roi-header-text">
+        <div class="roi-header-title">Retour sur investissement</div>
+        <div class="roi-header-sub">Basé sur la production simulée et le prix de l'électricité</div>
+      </div>
+    </div>
+    <div class="roi-body">
+
+      <!-- Paramètres -->
+      <div class="roi-inputs">
+        <div class="roi-input-block">
+          <div class="roi-input-label">Prix unitaire d'une éolienne</div>
+          <div class="roi-input-sub">Hors taxes · ajustable selon devis</div>
+          <div class="roi-input-row">
+            <input type="number" id="roi-price" class="roi-num" min="1" value="1000" oninput="onRoiChange()">
+            <span class="roi-num-unit">€ HT / turbine</span>
+          </div>
+        </div>
+        <div class="roi-input-block">
+          <div class="roi-input-label">Prix actuel de l'électricité</div>
+          <div class="roi-input-sub">Tarif du prospect en €/kWh</div>
+          <div class="roi-input-row">
+            <input type="number" id="roi-kwh" class="roi-num" min="0.01" step="0.01" value="0.22" oninput="onRoiChange()">
+            <span class="roi-num-unit">€ / kWh</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="roi-kpis">
+        <div class="rk" style="--rk-color:#6d28d9">
+          <div class="rk-accent"></div>
+          <div class="rk-lbl">Coût total installation</div>
+          <div class="rk-val" id="rk-cost">—</div>
+          <div class="rk-unit">€ HT</div>
+        </div>
+        <div class="rk" style="--rk-color:var(--muted)">
+          <div class="rk-accent"></div>
+          <div class="rk-lbl">Économie annuelle · v. moy.</div>
+          <div class="rk-val" id="rk-eco-avg">—</div>
+          <div class="rk-unit">€ / an</div>
+        </div>
+        <div class="rk" style="--rk-color:var(--blue)">
+          <div class="rk-accent"></div>
+          <div class="rk-lbl">Économie annuelle · ERA5</div>
+          <div class="rk-val" id="rk-eco-real">—</div>
+          <div class="rk-unit">€ / an</div>
+        </div>
+      </div>
+
+      <!-- Badges ROI -->
+      <div class="roi-badges">
+        <div class="roi-badge avg-b">
+          <div class="roi-badge-icon">🕐</div>
+          <div class="roi-badge-label">ROI · estimation v. moyenne</div>
+          <div class="roi-badge-val" id="rb-avg">—</div>
+          <div class="roi-badge-sub" id="rb-avg-sub"></div>
+        </div>
+        <div class="roi-badge real-b">
+          <div class="roi-badge-icon">⚡</div>
+          <div class="roi-badge-label">ROI · production réelle ERA5</div>
+          <div class="roi-badge-val" id="rb-real">—</div>
+          <div class="roi-badge-sub" id="rb-real-sub"></div>
+        </div>
+      </div>
+
+      <!-- Graphique courbe de remboursement -->
+      <div class="roi-chart-card">
+        <div class="sec-lbl" style="margin-bottom:.5rem;">Courbe de remboursement cumulé sur 20 ans</div>
+        <div class="roi-legend">
+          <div class="li"><div class="ld" style="background:rgba(100,116,139,.7)"></div>Économies cumulées · v. moyenne</div>
+          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies cumulées · ERA5 réel</div>
+          <div class="li"><div class="ld" style="background:rgba(220,38,38,.8);height:2px;width:18px;border-radius:1px;"></div>Coût installation</div>
+        </div>
+        <div class="roi-chart-wrap" style="margin-top:.75rem;">
+          <canvas id="roich" role="img" aria-label="Courbe de retour sur investissement">Chargement.</canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -772,6 +905,7 @@ async function runAnalysis(lat,lon,dn){
     updateDerived(initT);
     computeProduction(initT);
     document.getElementById('sim').style.display='block';
+    document.getElementById('roi-section').style.display='block';
     document.getElementById('mf-section').style.display='block';
 
     updateMap(lat,lon,scts,ssps,n,avg,D16[ds],place);
@@ -979,6 +1113,10 @@ function computeProduction(N){
   document.getElementById('sk-bonus').textContent='+'+bonus.toFixed(1)+'%';
   document.getElementById('sk-hours').textContent=heuresEq.toLocaleString('fr-FR');
 
+  /* Stocker pour le ROI */
+  lastRealKwh=realAnnualKwh;
+  lastAvgKwh=avgAnnualKwh;
+
   /* Table */
   var tbody=document.getElementById('prod-tbody');
   tbody.innerHTML='';
@@ -995,6 +1133,9 @@ function computeProduction(N){
   document.getElementById('ft-avg').textContent=fmt(avgAnnualKwh);
   document.getElementById('ft-real').textContent=fmt(realAnnualKwh);
   document.getElementById('ft-bonus').textContent='+'+bonus.toFixed(1)+'%';
+
+  /* Déclencher le ROI */
+  computeROI();
 }
 
 /* ── Météo-France integration ────────────────────────────── */
@@ -1059,20 +1200,15 @@ async function findNearestStation(dept,lat,lon){
 /* Order hourly data for a station */
 async function orderMFData(stationId){
   setMFStatus('⌛ Commande des données horaires (2019–2023)…');
-  var url=MF_BASE+'/commande/fichier';
-  var payload={
-    idStation:stationId,
-    dateDebutPeriode:'2019-01-01T00:00:00Z',
-    dateFinPeriode:'2023-12-31T23:00:00Z',
-    frequence:'horaire'
-  };
-  var res=await mfCall(url,'POST',payload);
+  var url=MF_BASE+'/commande-station/horaire'
+    +'?id-station='+encodeURIComponent(stationId)
+    +'&date-deb-periode=2019-01-01T00%3A00%3A00Z'
+    +'&date-fin-periode=2023-12-31T23%3A00%3A00Z';
+  var res=await mfCall(url,'GET',null);
   if(!res.ok){
-    /* Try alternative payload format */
     throw new Error('Erreur commande MF ('+res.status+'): '+JSON.stringify(res.data).substring(0,200));
   }
-  /* The response should contain an order ID */
-  var orderId=res.data&&(res.data.idCmde||res.data.id||res.data);
+  var orderId=res.data&&(res.data.elaboreProduit||res.data.idCmde||res.data.id||res.data);
   if(!orderId) throw new Error('Pas d\'identifiant de commande dans la réponse: '+JSON.stringify(res.data).substring(0,200));
   return String(orderId);
 }
@@ -1311,6 +1447,126 @@ function drawMFComparison(eraMonthly,mfMonthly){
     }
   });
 }
+
+/* ── ROI ─────────────────────────────────────────────────── */
+var roiChartInst=null;
+/* Globals set by computeProduction: */
+var lastRealKwh=0, lastAvgKwh=0;
+
+function onRoiChange(){ computeROI(); }
+
+function fmtEur(v){
+  if(v>=1000000) return (v/1000000).toFixed(2)+' M€';
+  if(v>=1000) return Math.round(v).toLocaleString('fr-FR')+' €';
+  return v.toFixed(0)+' €';
+}
+
+function roiLabel(years){
+  var y=Math.floor(years), m=Math.round((years-y)*12);
+  if(y===0) return m+' mois';
+  if(m===0) return y+' an'+(y>1?'s':'');
+  return y+' an'+(y>1?'s':'')+' '+m+' mois';
+}
+
+function computeROI(){
+  var priceUnit=parseFloat(document.getElementById('roi-price').value)||1000;
+  var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.22;
+  var N=parseInt(document.getElementById('inp-turbines').value)||1;
+
+  var cost=N*priceUnit;
+  var ecoAvg=lastAvgKwh*priceKwh;
+  var ecoReal=lastRealKwh*priceKwh;
+
+  /* KPIs */
+  document.getElementById('rk-cost').textContent=fmtEur(cost);
+  document.getElementById('rk-eco-avg').textContent=ecoAvg>0?fmtEur(ecoAvg):'—';
+  document.getElementById('rk-eco-real').textContent=ecoReal>0?fmtEur(ecoReal):'—';
+
+  /* ROI badges */
+  function setRoi(valId,subId,eco){
+    if(eco<=0){document.getElementById(valId).textContent='∞';document.getElementById(subId).textContent='Production insuffisante';return;}
+    var yrs=cost/eco;
+    document.getElementById(valId).textContent=roiLabel(yrs);
+    document.getElementById(subId).textContent='soit '+yrs.toFixed(1)+' années';
+  }
+  setRoi('rb-avg','rb-avg-sub',ecoAvg);
+  setRoi('rb-real','rb-real-sub',ecoReal);
+
+  drawROI(cost,ecoAvg,ecoReal);
+}
+
+function drawROI(cost,ecoAvg,ecoReal){
+  if(roiChartInst)roiChartInst.destroy();
+
+  var years=Array.from({length:21},function(_,i){return i;});
+  var cumAvg=years.map(function(y){return y*ecoAvg;});
+  var cumReal=years.map(function(y){return y*ecoReal;});
+  var costLine=years.map(function(){return cost;});
+
+  /* Find ROI year labels */
+  var roiAvgY=ecoAvg>0?cost/ecoAvg:null;
+  var roiRealY=ecoReal>0?cost/ecoReal:null;
+
+  roiChartInst=new Chart(document.getElementById('roich'),{
+    type:'line',
+    data:{
+      labels:years,
+      datasets:[
+        {
+          label:'Économies cumulées · v. moy.',
+          data:cumAvg,
+          borderColor:'rgba(100,116,139,.7)',
+          backgroundColor:'rgba(100,116,139,.07)',
+          borderWidth:2,fill:true,tension:.3,pointRadius:0,pointHoverRadius:4
+        },
+        {
+          label:'Économies cumulées · ERA5 réel',
+          data:cumReal,
+          borderColor:'rgba(26,95,168,.85)',
+          backgroundColor:'rgba(26,95,168,.08)',
+          borderWidth:2.5,fill:true,tension:.3,pointRadius:0,pointHoverRadius:4
+        },
+        {
+          label:'Coût installation',
+          data:costLine,
+          borderColor:'rgba(220,38,38,.75)',
+          borderWidth:2,borderDash:[6,4],fill:false,tension:0,pointRadius:0,pointHoverRadius:0
+        }
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:function(items){return 'Année '+items[0].label;},
+            label:function(c){
+              if(c.datasetIndex===2)return 'Coût : '+fmtEur(c.parsed.y);
+              return c.dataset.label.split('·')[1].trim()+' : '+fmtEur(c.parsed.y);
+            }
+          }
+        },
+        annotation:roiAvgY||roiRealY?{annotations:{}}:undefined
+      },
+      scales:{
+        x:{
+          title:{display:true,text:'Années',color:'#94A3B8',font:{size:10}},
+          ticks:{color:'#94A3B8',font:{size:10}},
+          grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}
+        },
+        y:{
+          min:0,
+          title:{display:true,text:'€ cumulés',color:'#94A3B8',font:{size:10}},
+          ticks:{color:'#94A3B8',font:{size:10},callback:function(v){return fmtEur(v);}},
+          grid:{color:'rgba(0,0,0,0.05)'},border:{display:false}
+        }
+      }
+    }
+  });
+}
+
 
 /* Boot */
 ainp.value='Theix-Noyalo, Morbihan, France';
