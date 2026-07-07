@@ -1199,18 +1199,39 @@ async function findNearestStation(dept,lat,lon){
 
 /* Order hourly data for a station */
 async function orderMFData(stationId){
-  setMFStatus('⌛ Commande des données horaires (2019–2023)…');
-  var url=MF_BASE+'/commande-station/horaire'
-    +'?id-station='+encodeURIComponent(stationId)
-    +'&date-deb-periode=2019-01-01T00%3A00%3A00Z'
-    +'&date-fin-periode=2023-12-31T23%3A00%3A00Z';
-  var res=await mfCall(url,'GET',null);
-  if(!res.ok){
-    throw new Error('Erreur commande MF ('+res.status+'): '+JSON.stringify(res.data).substring(0,200));
+  setMFStatus('⌛ Commande des données horaires année par année (2019–2023)…');
+  var years=[2019,2020,2021,2022,2023];
+  var orderIds=[];
+  for(var i=0;i<years.length;i++){
+    var y=years[i];
+    var url=MF_BASE+'/commande-station/horaire'
+      +'?id-station='+encodeURIComponent(stationId)
+      +'&date-deb-periode='+y+'-01-01T00%3A00%3A00Z'
+      +'&date-fin-periode='+y+'-12-31T23%3A00%3A00Z';
+    var res=await mfCall(url,'GET',null);
+    if(!res.ok) throw new Error('Erreur commande MF '+y+' ('+res.status+'): '+JSON.stringify(res.data).substring(0,200));
+    var orderId=res.data&&(res.data.elaboreProduit||res.data.idCmde||res.data.id||res.data);
+    if(!orderId) throw new Error('Pas d\'ID de commande pour '+y+': '+JSON.stringify(res.data).substring(0,200));
+    orderIds.push(String(orderId));
+    setMFStatus('⌛ Commande passée pour '+y+' ('+( i+1)+'/5)…');
   }
-  var orderId=res.data&&(res.data.elaboreProduit||res.data.idCmde||res.data.id||res.data);
-  if(!orderId) throw new Error('Pas d\'identifiant de commande dans la réponse: '+JSON.stringify(res.data).substring(0,200));
-  return String(orderId);
+  return orderIds;
+}
+
+async function pollAndDownloadAll(orderIds){
+  var allData=[];
+  for(var i=0;i<orderIds.length;i++){
+    var id=orderIds[i];
+    var year=2019+i;
+    setMFStatus('⌛ Attente données '+year+'… (commande '+id+')');
+    await pollMFOrder(id);
+    setMFStatus('⌛ Téléchargement '+year+'…');
+    var csv=await downloadMFData(id);
+    var parsed=parseMFCsv(csv);
+    allData=allData.concat(parsed);
+    setMFStatus('✅ '+year+' chargé ('+parsed.length+' heures)');
+  }
+  return allData;
 }
 
 /* Poll until order is ready (max 20 attempts × 3s) */
@@ -1329,18 +1350,13 @@ async function loadMFStation(){
     var dist=station._dist.toFixed(1);
     setMFStatus('📡 Station trouvée : '+station.nom+' ('+dist+' km)');
 
-    /* 3. Commande */
-    var orderId=await orderMFData(station.id);
+    /* 3. Commandes (1 par année) */
+    var orderIds=await orderMFData(station.id);
 
-    /* 4. Poll */
-    await pollMFOrder(orderId);
-
-    /* 5. Téléchargement */
-    var csv=await downloadMFData(orderId);
-
-    /* 6. Parse + stats */
+    /* 4. Poll + téléchargement pour chaque année */
+    var mfData=await pollAndDownloadAll(orderIds);
+    /* 5. Vérification et stats */
     setMFStatus('⌛ Analyse des données…');
-    var mfData=parseMFCsv(csv);
     if(mfData.length<100) throw new Error('Trop peu de données valides ('+mfData.length+' lignes).');
     var mfStats=computeMFStats(mfData);
 
