@@ -478,6 +478,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
             <tr>
               <td>Total annuel</td>
               <td class="td-avg" id="ft-avg">—</td>
+              <td class="td-avg" id="ft-avg2">—</td>
               <td class="td-real" id="ft-real">—</td>
               <td class="td-bonus" id="ft-bonus">—</td>
             </tr>
@@ -958,32 +959,26 @@ function computeProduction(N){
 
   var realAnnualH=realTotalH/simTotalYears;
 
-  /* Vitesse cubique moyenne annuelle — base de calibration */
+  /* ── Référence commune : v³ annuel moyen issu des données horaires réelles ── */
   var v3AnnualAvg=realTotalH>0?realTotalV3/realTotalH:1;
 
-  /* ── Production réelle ERA5 : pondération par v³ heure/heure ── */
+  /* ── Méthode réelle ERA5 : E[v³] heure par heure ── */
   var realMonthKwh=realMonthH.map(function(h,m){
     if(h===0) return 0;
-    var v3MoyMois=realMonthV3[m]/h;
-    var pEffMois=pmoyTotal*(v3MoyMois/v3AnnualAvg);
-    return pEffMois*(h/simTotalYears)/1000;
+    var v3MoyMois=realMonthV3[m]/h;               /* E[v³] réel du mois */
+    var pEff=pmoyTotal*(v3MoyMois/v3AnnualAvg);   /* W pondéré */
+    return pEff*(h/simTotalYears)/1000;
   });
   var realAnnualKwh=realMonthKwh.reduce(function(a,b){return a+b;},0);
 
-  /* ── Production vent moyen : v_moy_mois³ (simplifié) ── */
-  /* Référence cubique : moyenne des v_moy_mois³ pondérée par les heures */
-  var totalH=realTotalH||1;
-  var v3AvgRef=realMonthH.reduce(function(acc,h,m){
-    var vMoy=simMonthlyAvg[m]||0;
-    return acc+vMoy*vMoy*vMoy*(h/totalH);
-  },0)||1;
-
+  /* ── Méthode vent moyen : (v_moy)³ par mois — MÊME référence v3AnnualAvg ── */
+  /* Jensen garantit v³_moy_réel ≥ (v_moy)³ → gain toujours positif */
   var avgMonthKwh=realMonthH.map(function(h,m){
     if(h===0) return 0;
     var vMoy=simMonthlyAvg[m]||0;
-    var v3Moy=vMoy*vMoy*vMoy;
-    var pEffMoy=pmoyTotal*(v3Moy/v3AvgRef);
-    return pEffMoy*(h/simTotalYears)/1000;
+    var v3Moy=vMoy*vMoy*vMoy;                     /* (v_moy)³ simplifié */
+    var pEff=pmoyTotal*(v3Moy/v3AnnualAvg);       /* même référence */
+    return pEff*(h/simTotalYears)/1000;
   });
   var avgAnnualKwh=avgMonthKwh.reduce(function(a,b){return a+b;},0);
 
@@ -1015,8 +1010,9 @@ function computeProduction(N){
   }
   var gainAnnual=avgAnnualKwh>0?((realAnnualKwh-avgAnnualKwh)/avgAnnualKwh*100):0;
   document.getElementById('ft-avg').textContent=Math.round(realAnnualH)+' h';
+  document.getElementById('ft-avg2').textContent=fmt(avgAnnualKwh);
   document.getElementById('ft-real').textContent=fmt(realAnnualKwh);
-  document.getElementById('ft-bonus').textContent='+'+(gainAnnual).toFixed(1)+'%';
+  document.getElementById('ft-bonus').textContent='+'+gainAnnual.toFixed(1)+'%';
 
   /* ROI */
   computeROI();
