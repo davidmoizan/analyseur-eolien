@@ -245,70 +245,6 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
 }
 .sim-note strong{font-weight:700;}
 
-/* ── Météo-France station ─────────────────────────────────── */
-.mf-section{
-  display:none;margin-top:1.25rem;
-  background:var(--card);border-radius:var(--r-lg);
-  border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);overflow:hidden;
-}
-.mf-header{
-  background:linear-gradient(135deg,#0a3d1a 0%,#1a6b35 55%,#2d9e56 100%);
-  padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-}
-.mf-header-left{display:flex;align-items:center;gap:12px;}
-.mf-header-icon{font-size:22px;}
-.mf-header-text{color:#fff;}
-.mf-header-title{font-size:14px;font-weight:700;letter-spacing:-.2px;}
-.mf-header-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
-.mf-load-btn{
-  flex-shrink:0;padding:8px 16px;background:rgba(255,255,255,.15);color:#fff;
-  border:1px solid rgba(255,255,255,.3);border-radius:var(--r-md);
-  font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
-  transition:background .15s;
-}
-.mf-load-btn:hover{background:rgba(255,255,255,.25);}
-.mf-load-btn:disabled{opacity:.5;cursor:not-allowed;}
-.mf-body{padding:1.25rem;}
-.mf-status{font-size:13px;color:var(--muted);min-height:18px;margin-bottom:1rem;white-space:pre-line;}
-
-/* Station info badge */
-.mf-station-badge{
-  display:none;align-items:center;gap:10px;flex-wrap:wrap;
-  background:var(--teal-light);border:1px solid rgba(26,148,105,.2);
-  border-radius:var(--r-md);padding:.75rem 1rem;margin-bottom:1.25rem;
-}
-.mf-station-badge .sb-icon{font-size:20px;}
-.mf-station-badge .sb-name{font-size:13px;font-weight:700;color:var(--teal);}
-.mf-station-badge .sb-meta{font-size:11px;color:var(--muted);margin-top:1px;}
-
-/* Comparison metrics */
-.mf-compare-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  gap:8px;margin-bottom:1.25rem;
-}
-.cmc{
-  background:var(--bg);border-radius:var(--r-md);padding:.875rem 1rem;
-  border:1.5px solid var(--border);
-}
-.cmc-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;}
-.cmc-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-.cmc-era{font-size:18px;font-weight:800;color:var(--blue);}
-.cmc-mf{font-size:18px;font-weight:800;color:var(--teal);}
-.cmc-sep{font-size:12px;color:var(--subtle);}
-.cmc-unit{font-size:11px;color:var(--muted);}
-.cmc-delta{font-size:11px;margin-top:3px;}
-.cmc-delta.pos{color:var(--teal);}
-.cmc-delta.neg{color:var(--red);}
-.cmc-delta.neu{color:var(--muted);}
-
-/* Comparison chart */
-.mf-chart-card{background:var(--card);border-radius:var(--r-md);padding:1rem;border:1.5px solid var(--border);box-shadow:var(--sh-sm);margin-bottom:1rem;}
-.mf-chart-wrap{position:relative;height:220px;}
-.mf-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:.75rem;}
-
-.mf-note{padding:.75rem 1rem;background:#F0FDF4;border-radius:var(--r-md);font-size:12px;color:#14532d;line-height:1.6;}
-.mf-note strong{font-weight:700;}
-
 /* ── ROI ──────────────────────────────────────────────────── */
 .roi-section{
   display:none;margin-top:1.25rem;
@@ -461,7 +397,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="sim-header-icon">⚡</div>
       <div class="sim-header-text">
         <div class="sim-header-title">Simulateur de production</div>
-        <div class="sim-header-sub">CP = 0,3 · A = 0,297 m²/turbine · ρ = 1,225 kg/m³ · seuil = 2 m/s · écrêtage à P_nominale</div>
+        <div class="sim-header-sub">P_moy fabricant × heures de vent ERA5 (v ≥ 2 m/s) · référence Philéole : 4 000 h/an</div>
       </div>
     </div>
     <div class="sim-body">
@@ -487,13 +423,13 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
           <div class="sim-derived" id="der-struct">= <strong>6 turbines</strong> · Surface : <strong>1,782 m²</strong></div>
         </div>
         <div class="sim-input-block">
-          <div class="sim-input-label">Puissance nominale</div>
-          <div class="sim-input-sub">Puissance max par turbine (fiche fabricant)</div>
+          <div class="sim-input-label">Puissance moyenne / turbine</div>
+          <div class="sim-input-sub">Donnée fabricant Philéole (100W par turbine en fonctionnement)</div>
           <div class="sim-input-row">
-            <input type="number" id="inp-pnom" class="sim-num" min="1" max="99999" value="45" oninput="onPnomChange()">
+            <input type="number" id="inp-pmoy" class="sim-num" min="1" max="99999" value="100" oninput="onPmoyChange()">
             <span class="sim-num-unit">W / turbine</span>
           </div>
-          <div class="sim-derived" id="der-pnom">Vitesse nominale : <strong>9,4 m/s</strong></div>
+          <div class="sim-derived" id="der-pmoy">Puissance totale installation : <strong id="der-pmoy-total">—</strong></div>
         </div>
       </div>
 
@@ -501,27 +437,27 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="sim-kpis">
         <div class="sk" style="--sk-color:var(--blue)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Production réelle ERA5</div>
+          <div class="sk-lbl">Production annuelle</div>
           <div class="sk-val" id="sk-real">—</div>
-          <div class="sk-unit">kWh / an</div>
-        </div>
-        <div class="sk" style="--sk-color:#94A3B8">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Estimation v. moyenne</div>
-          <div class="sk-val" id="sk-avg">—</div>
           <div class="sk-unit">kWh / an</div>
         </div>
         <div class="sk" style="--sk-color:var(--teal)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Bonus variabilité</div>
-          <div class="sk-val" id="sk-bonus">—</div>
-          <div class="sk-unit">gain rafales / pics</div>
+          <div class="sk-lbl">Par turbine</div>
+          <div class="sk-val" id="sk-perturbine">—</div>
+          <div class="sk-unit">kWh / an / turbine</div>
+        </div>
+        <div class="sk" style="--sk-color:var(--purple)">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Par mur (18 turbines)</div>
+          <div class="sk-val" id="sk-permur">—</div>
+          <div class="sk-unit">kWh / an / mur</div>
         </div>
         <div class="sk" style="--sk-color:var(--amber)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Heures éq. pleine charge</div>
+          <div class="sk-lbl">Heures de vent ERA5</div>
           <div class="sk-val" id="sk-hours">—</div>
-          <div class="sk-unit">h / an</div>
+          <div class="sk-unit">h / an (v ≥ 2 m/s)</div>
         </div>
       </div>
 
@@ -531,9 +467,10 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
           <thead>
             <tr>
               <th>Mois</th>
-              <th>Estim. v. moy. (kWh)</th>
-              <th>Réelle ERA5 (kWh)</th>
-              <th>Bonus variab.</th>
+              <th>Heures de vent (h)</th>
+              <th>Prod. vent moyen (kWh)</th>
+              <th>Prod. réelle ERA5 (kWh)</th>
+              <th>Gain variabilité</th>
             </tr>
           </thead>
           <tbody id="prod-tbody"></tbody>
@@ -549,101 +486,16 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       </div>
 
       <div class="sim-note">
-        <strong>Réelle ERA5</strong> : somme heure par heure de P = CP × ½ρAv³ sur 2019–2023, divisée par 5.
-        Intègre l'effet des rafales et pics via la convexité de v³ (inégalité de Jensen).
-        <strong>L'estimation v. moyenne sous-estime systématiquement la production réelle</strong> — le bonus mesure cet écart.
+        <strong>Vent moyen</strong> : P_moy pondérée par (v_moy_mois / v_moy_annuelle)³ × heures de vent.
+        <strong>Réel ERA5</strong> : P_moy pondérée par (v³_moyen_heure_par_heure / v³_annuel) × heures — intègre l'effet des rafales (Jensen).
+        Le gain mesure la production supplémentaire due à la variabilité réelle du vent.
       </div>
 
     </div>
   </div>
 
-  <!-- ── Station Météo-France ───────────────────────────────── -->
-  <div class="mf-section" id="mf-section">
-    <div class="mf-header">
-      <div class="mf-header-left">
-        <div class="mf-header-icon">📡</div>
-        <div class="mf-header-text">
-          <div class="mf-header-title">Comparaison avec une station Météo-France</div>
-          <div class="mf-header-sub">Données réelles mesurées au sol · réseau officiel RESO40</div>
-        </div>
-      </div>
-      <button class="mf-load-btn" id="mf-btn" onclick="loadMFStation()">Charger la station la plus proche</button>
-    </div>
-    <div class="mf-body">
-      <div class="mf-status" id="mf-status"></div>
 
-      <!-- Badge station -->
-      <div class="mf-station-badge" id="mf-badge">
-        <div class="sb-icon">🏔️</div>
-        <div>
-          <div class="sb-name" id="mf-sname">—</div>
-          <div class="sb-meta" id="mf-smeta">—</div>
-        </div>
-      </div>
-
-      <!-- Métriques comparées -->
-      <div class="mf-compare-grid" id="mf-metrics" style="display:none;">
-        <div class="cmc">
-          <div class="cmc-lbl">Vitesse moyenne</div>
-          <div class="cmc-row">
-            <span class="cmc-era" id="cm-era-avg">—</span>
-            <span class="cmc-sep">ERA5</span>
-            <span class="cmc-mf" id="cm-mf-avg">—</span>
-            <span class="cmc-sep">MF</span>
-            <span class="cmc-unit">m/s</span>
-          </div>
-          <div class="cmc-delta" id="cm-delta-avg"></div>
-        </div>
-        <div class="cmc">
-          <div class="cmc-lbl">Dir. dominante</div>
-          <div class="cmc-row">
-            <span class="cmc-era" id="cm-era-dir">—</span>
-            <span class="cmc-sep">ERA5</span>
-            <span class="cmc-mf" id="cm-mf-dir">—</span>
-            <span class="cmc-sep">MF</span>
-          </div>
-        </div>
-        <div class="cmc">
-          <div class="cmc-lbl">Jours ≥ 5 m/s</div>
-          <div class="cmc-row">
-            <span class="cmc-era" id="cm-era-d5">—</span>
-            <span class="cmc-sep">ERA5</span>
-            <span class="cmc-mf" id="cm-mf-d5">—</span>
-            <span class="cmc-sep">MF</span>
-            <span class="cmc-unit">j/an</span>
-          </div>
-          <div class="cmc-delta" id="cm-delta-d5"></div>
-        </div>
-        <div class="cmc">
-          <div class="cmc-lbl">Jours ≥ 10 m/s</div>
-          <div class="cmc-row">
-            <span class="cmc-era" id="cm-era-d10">—</span>
-            <span class="cmc-sep">ERA5</span>
-            <span class="cmc-mf" id="cm-mf-d10">—</span>
-            <span class="cmc-sep">MF</span>
-            <span class="cmc-unit">j/an</span>
-          </div>
-          <div class="cmc-delta" id="cm-delta-d10"></div>
-        </div>
-      </div>
-
-      <!-- Graphique comparaison mensuelle -->
-      <div class="mf-chart-card" id="mf-chart-card" style="display:none;">
-        <div class="sec-lbl" style="margin-bottom:.75rem;">Vitesse moyenne mensuelle · ERA5 vs station MF</div>
-        <div class="mf-legend">
-          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>ERA5 (réanalyse)</div>
-          <div class="li"><div class="ld" style="background:rgba(26,148,105,.85)"></div>Station MF (mesure sol)</div>
-        </div>
-        <div class="mf-chart-wrap" style="margin-top:.75rem;">
-          <canvas id="mfch" role="img" aria-label="Comparaison vitesse mensuelle ERA5 vs Météo-France">Chargement.</canvas>
-        </div>
-        <div class="mf-note" style="margin-top:1rem;" id="mf-note"></div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── ROI ───────────────────────────────────────────────── -->
+    <!-- ── ROI ───────────────────────────────────────────────── -->
   <div class="roi-section" id="roi-section">
     <div class="roi-header">
       <div class="roi-header-icon">📈</div>
@@ -666,7 +518,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
         </div>
         <div class="roi-input-block">
           <div class="roi-input-label">Prix actuel de l'électricité</div>
-          <div class="roi-input-sub">Tarif du prospect en €/kWh</div>
+          <div class="roi-input-sub">Prix de l'électricité payé par le client</div>
           <div class="roi-input-row">
             <input type="number" id="roi-kwh" class="roi-num" min="0.01" step="0.01" value="0.22" oninput="onRoiChange()">
             <span class="roi-num-unit">€ / kWh</span>
@@ -682,15 +534,9 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
           <div class="rk-val" id="rk-cost">—</div>
           <div class="rk-unit">€ HT</div>
         </div>
-        <div class="rk" style="--rk-color:var(--muted)">
-          <div class="rk-accent"></div>
-          <div class="rk-lbl">Économie annuelle · v. moy.</div>
-          <div class="rk-val" id="rk-eco-avg">—</div>
-          <div class="rk-unit">€ / an</div>
-        </div>
         <div class="rk" style="--rk-color:var(--blue)">
           <div class="rk-accent"></div>
-          <div class="rk-lbl">Économie annuelle · ERA5</div>
+          <div class="rk-lbl">Économie annuelle</div>
           <div class="rk-val" id="rk-eco-real">—</div>
           <div class="rk-unit">€ / an</div>
         </div>
@@ -700,13 +546,13 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="roi-badges">
         <div class="roi-badge avg-b">
           <div class="roi-badge-icon">🕐</div>
-          <div class="roi-badge-label">ROI · estimation v. moyenne</div>
+          <div class="roi-badge-label">ROI · vent moyen</div>
           <div class="roi-badge-val" id="rb-avg">—</div>
           <div class="roi-badge-sub" id="rb-avg-sub"></div>
         </div>
         <div class="roi-badge real-b">
           <div class="roi-badge-icon">⚡</div>
-          <div class="roi-badge-label">ROI · production réelle ERA5</div>
+          <div class="roi-badge-label">ROI · réel ERA5 (rafales)</div>
           <div class="roi-badge-val" id="rb-real">—</div>
           <div class="roi-badge-sub" id="rb-real-sub"></div>
         </div>
@@ -716,8 +562,8 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="roi-chart-card">
         <div class="sec-lbl" style="margin-bottom:.5rem;">Courbe de remboursement cumulé sur 20 ans</div>
         <div class="roi-legend">
-          <div class="li"><div class="ld" style="background:rgba(100,116,139,.7)"></div>Économies cumulées · v. moyenne</div>
-          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies cumulées · ERA5 réel</div>
+          <div class="li"><div class="ld" style="background:rgba(100,116,139,.75)"></div>Économies · vent moyen</div>
+          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies · ERA5 réel</div>
           <div class="li"><div class="ld" style="background:rgba(220,38,38,.8);height:2px;width:18px;border-radius:1px;"></div>Coût installation</div>
         </div>
         <div class="roi-chart-wrap" style="margin-top:.75rem;">
@@ -912,11 +758,9 @@ async function runAnalysis(lat,lon,dn){
     /* Init inputs and run first computation */
     var initT=parseInt(document.getElementById('inp-turbines').value)||6;
     updateDerived(initT);
-    onPnomChange();
     computeProduction(initT);
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
-    document.getElementById('mf-section').style.display='block';
 
     updateMap(lat,lon,scts,ssps,n,avg,D16[ds],place);
     drawMonthly(ma);
@@ -1052,14 +896,13 @@ function drawMonthly(avg){
 var TURB_PER_STRUCT=6;
 var SIM_MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
-function getPnom(){ return parseFloat(document.getElementById('inp-pnom').value)||45; }
-function getVnom(pnom){ return Math.pow(pnom/SIM_K, 1/3); }
+function getPmoy(){ return parseFloat(document.getElementById('inp-pmoy').value)||100; }
+var PHILEOLE_H=4000; /* heures/an hypothèse Philéole */
 
-function onPnomChange(){
-  var pnom=getPnom();
-  var vnom=getVnom(pnom);
-  document.getElementById('der-pnom').innerHTML='Vitesse nominale : <strong>'+vnom.toFixed(1)+' m/s</strong>';
+function onPmoyChange(){
   var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  var el=document.getElementById('der-pmoy-total');
+  if(el) el.textContent=(N*getPmoy()).toLocaleString('fr-FR')+' W';
   if(window.simHours) computeProduction(N);
 }
 
@@ -1083,457 +926,100 @@ function onStructChange(){
 
 function updateDerived(t){
   var s=Math.ceil(t/TURB_PER_STRUCT);
-  var area=(t*SIM_A_UNIT).toFixed(3);
-  document.getElementById('der-turbines').innerHTML='Surface : <strong>'+area+' m²</strong>';
-  document.getElementById('der-struct').innerHTML='= <strong>'+t+' turbines</strong> · Surface : <strong>'+area+' m²</strong>';
-  /* Refresh vnom display */
-  onPnomChange();
+  document.getElementById('der-turbines').innerHTML='Surface totale : <strong>'+(t*SIM_A_UNIT).toFixed(3)+' m²</strong>';
+  document.getElementById('der-struct').innerHTML='= <strong>'+t+' turbines</strong>';
 }
 
 function fmt(v){
-  /* Format kWh: 0 decimals if >=10, 1 if >=1, show Wh otherwise */
   if(v>=10)return v.toFixed(0);
   if(v>=1)return v.toFixed(1);
   return (v*1000).toFixed(0)+' Wh';
 }
 
 function computeProduction(N){
-  var k=SIM_K*N;
-  var pnom=getPnom();          /* W par turbine */
-  var pnomTotal=pnom*N;        /* W total installation */
-  var vnom=getVnom(pnom);      /* m/s vitesse nominale */
+  var pmoy=getPmoy();          /* W par turbine (donnée fabricant) */
+  var pmoyTotal=pmoy*N;        /* W total installation */
   if(!window.simHours)return;
   var hrs=window.simHours;
 
-  /* Real ERA5 avec écrêtage à P_nominale */
-  var realMonthWh=Array(12).fill(0);
-  var realTotalWh=0;
+  /* ── Cumul vitesse³ et heures par mois (pour pondération saisonnière) ── */
+  var realMonthH=Array(12).fill(0);    /* heures de vent (v≥2) par mois */
+  var realMonthV3=Array(12).fill(0);   /* somme v³ par mois */
+  var realTotalH=0, realTotalV3=0;
+
   for(var i=0;i<hrs.length;i++){
     if(hrs[i].s<SIM_VMIN)continue;
-    var p=k*hrs[i].s*hrs[i].s*hrs[i].s;
-    if(p>pnomTotal) p=pnomTotal; /* écrêtage */
-    realMonthWh[hrs[i].m]+=p;
-    realTotalWh+=p;
+    var v3=hrs[i].s*hrs[i].s*hrs[i].s;
+    realMonthH[hrs[i].m]++;
+    realMonthV3[hrs[i].m]+=v3;
+    realTotalH++;
+    realTotalV3+=v3;
   }
-  var realAnnualKwh=realTotalWh/simTotalYears/1000;
-  var realMonthKwh=realMonthWh.map(function(v){return v/simTotalYears/1000;});
 
-  /* Simplified avec écrêtage */
-  var daysInMonth=[31,28.25,31,30,31,30,31,31,30,31,30,31];
-  var avgMonthKwh=simMonthlyAvg.map(function(v,i){
-    if(v<SIM_VMIN)return 0;
-    var p=k*v*v*v;
-    if(p>pnomTotal) p=pnomTotal;
-    return p*daysInMonth[i]*24/1000;
+  var realAnnualH=realTotalH/simTotalYears;
+
+  /* Vitesse cubique moyenne annuelle — base de calibration */
+  var v3AnnualAvg=realTotalH>0?realTotalV3/realTotalH:1;
+
+  /* ── Production réelle ERA5 : pondération par v³ heure/heure ── */
+  var realMonthKwh=realMonthH.map(function(h,m){
+    if(h===0) return 0;
+    var v3MoyMois=realMonthV3[m]/h;
+    var pEffMois=pmoyTotal*(v3MoyMois/v3AnnualAvg);
+    return pEffMois*(h/simTotalYears)/1000;
+  });
+  var realAnnualKwh=realMonthKwh.reduce(function(a,b){return a+b;},0);
+
+  /* ── Production vent moyen : v_moy_mois³ (simplifié) ── */
+  /* Référence cubique : moyenne des v_moy_mois³ pondérée par les heures */
+  var totalH=realTotalH||1;
+  var v3AvgRef=realMonthH.reduce(function(acc,h,m){
+    var vMoy=simMonthlyAvg[m]||0;
+    return acc+vMoy*vMoy*vMoy*(h/totalH);
+  },0)||1;
+
+  var avgMonthKwh=realMonthH.map(function(h,m){
+    if(h===0) return 0;
+    var vMoy=simMonthlyAvg[m]||0;
+    var v3Moy=vMoy*vMoy*vMoy;
+    var pEffMoy=pmoyTotal*(v3Moy/v3AvgRef);
+    return pEffMoy*(h/simTotalYears)/1000;
   });
   var avgAnnualKwh=avgMonthKwh.reduce(function(a,b){return a+b;},0);
 
-  /* Bonus & heures eq. basées sur P_nominale */
-  var bonus=avgAnnualKwh>0?((realAnnualKwh-avgAnnualKwh)/avgAnnualKwh*100):0;
-  var heuresEq=pnomTotal>0?Math.round(realAnnualKwh*1000/pnomTotal):0;
-
-  /* KPIs */
-  document.getElementById('sk-real').textContent=fmt(realAnnualKwh).replace(' Wh','');
-  document.getElementById('sk-real').nextElementSibling.textContent=realAnnualKwh>=1?'kWh / an':'Wh / an';
-  document.getElementById('sk-avg').textContent=fmt(avgAnnualKwh).replace(' Wh','');
-  document.getElementById('sk-avg').nextElementSibling.textContent=avgAnnualKwh>=1?'kWh / an':'Wh / an';
-  document.getElementById('sk-bonus').textContent='+'+bonus.toFixed(1)+'%';
-  document.getElementById('sk-hours').textContent=heuresEq.toLocaleString('fr-FR');
+  /* ── KPIs ── */
+  var perTurbine=realAnnualKwh/N;
+  var perMur=perTurbine*18;
+  document.getElementById('sk-real').textContent=fmt(realAnnualKwh);
+  document.getElementById('sk-perturbine').textContent=fmt(perTurbine);
+  document.getElementById('sk-permur').textContent=fmt(perMur);
+  document.getElementById('sk-hours').textContent=Math.round(realAnnualH).toLocaleString('fr-FR');
 
   /* Stocker pour le ROI */
   lastRealKwh=realAnnualKwh;
   lastAvgKwh=avgAnnualKwh;
 
-  /* Table */
+  /* ── Tableau mensuel ── */
   var tbody=document.getElementById('prod-tbody');
   tbody.innerHTML='';
   for(var m=0;m<12;m++){
-    var b=avgMonthKwh[m]>0?((realMonthKwh[m]-avgMonthKwh[m])/avgMonthKwh[m]*100):0;
+    var mH=Math.round(realMonthH[m]/simTotalYears);
+    var gain=avgMonthKwh[m]>0?((realMonthKwh[m]-avgMonthKwh[m])/avgMonthKwh[m]*100):0;
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="td-month">'+SIM_MONTHS[m]+'</td>'
+      +'<td class="td-avg">'+mH+'</td>'
       +'<td class="td-avg">'+fmt(avgMonthKwh[m])+'</td>'
       +'<td class="td-real">'+fmt(realMonthKwh[m])+'</td>'
-      +'<td class="td-bonus">'+( b>0?'+':'' )+b.toFixed(1)+'%</td>';
+      +'<td class="td-bonus">'+(gain>=0?'+':'')+gain.toFixed(1)+'%</td>';
     tbody.appendChild(tr);
   }
-  /* Footer */
-  document.getElementById('ft-avg').textContent=fmt(avgAnnualKwh);
+  var gainAnnual=avgAnnualKwh>0?((realAnnualKwh-avgAnnualKwh)/avgAnnualKwh*100):0;
+  document.getElementById('ft-avg').textContent=Math.round(realAnnualH)+' h';
   document.getElementById('ft-real').textContent=fmt(realAnnualKwh);
-  document.getElementById('ft-bonus').textContent='+'+bonus.toFixed(1)+'%';
+  document.getElementById('ft-bonus').textContent='+'+(gainAnnual).toFixed(1)+'%';
 
-  /* Déclencher le ROI */
+  /* ROI */
   computeROI();
-}
-
-/* ── Météo-France integration ────────────────────────────── */
-var MF_BASE='https://public-api.meteofrance.fr/public/DPClim/v1';
-var PROXY='/.netlify/functions/mf-proxy';
-var mfChartInst=null;
-var currentLat=null, currentLon=null;
-
-/* Helper: call the proxy */
-async function mfCall(url, method, payload){
-  var resp=await fetch(PROXY,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({url:url,method:method||'GET',payload:payload||null})
-  });
-  var ct=resp.headers.get('content-type')||'';
-  if(ct.includes('application/json')) return {ok:resp.ok, status:resp.status, data:await resp.json(), isJson:true};
-  return {ok:resp.ok, status:resp.status, data:await resp.text(), isJson:false};
-}
-
-function setMFStatus(msg){document.getElementById('mf-status').textContent=msg;}
-
-/* Haversine distance km */
-function haversine(lat1,lon1,lat2,lon2){
-  var R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
-  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-/* Extract département code from lat/lon via Nominatim reverse */
-async function getDept(lat,lon){
-  try{
-    var r=await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lon+'&format=json&accept-language=fr');
-    var g=await r.json();
-    var pc=(g.address&&g.address.postcode)||'';
-    var dept=pc.substring(0,2);
-    /* Corse special cases */
-    if(dept==='20'){
-      var pc3=pc.substring(0,3);
-      dept=pc3==='200'||pc3==='201'?'2A':'2B';
-    }
-    return dept||null;
-  }catch(e){return null;}
-}
-
-/* Find nearest open station in a département */
-async function findNearestStation(dept,lat,lon){
-  setMFStatus('⌛ Recherche des stations mensuelles du département '+dept+'…');
-  /* Liste mensuelle = stations avec données mensuelles disponibles */
-  var url=MF_BASE+'/liste-stations/mensuelle?id-departement='+encodeURIComponent(dept);
-  var res=await mfCall(url);
-  if(!res.ok||!Array.isArray(res.data)||res.data.length===0){
-    setMFStatus('⌛ Fallback sur liste horaire…');
-    url=MF_BASE+'/liste-stations/horaire?id-departement='+encodeURIComponent(dept);
-    res=await mfCall(url);
-  }
-  if(!res.ok||!Array.isArray(res.data)) throw new Error('Impossible de lister les stations (dept '+dept+'). Code '+res.status);
-  var stations=res.data.filter(function(s){return s.postePublic;});
-  if(!stations.length) throw new Error('Aucune station publique dans ce département.');
-  stations.forEach(function(s){s._dist=haversine(lat,lon,s.lat,s.lon);});
-  stations.sort(function(a,b){return a._dist-b._dist;});
-  return stations.slice(0,5);
-}
-
-function extractOrderId(raw){
-  if(typeof raw==='number') return raw;
-  if(typeof raw==='string'&&/^\d+$/.test(raw.trim())) return parseInt(raw.trim());
-  if(typeof raw==='object'&&raw!==null){
-    var epdr=raw.elaboreProduitAvecDemandeResponse;
-    if(epdr&&epdr['return']) return epdr['return'];
-    var v=raw.elaboreProduit||raw.idCmde||raw.id||null;
-    if(v) return v;
-    var vals=Object.values(raw);
-    for(var j=0;j<vals.length;j++){
-      if(typeof vals[j]==='number') return vals[j];
-      if(typeof vals[j]==='object'&&vals[j]!==null){
-        var sub=Object.values(vals[j]);
-        for(var k=0;k<sub.length;k++) if(typeof sub[k]==='number'||/^\d+$/.test(String(sub[k]))) return sub[k];
-      }
-    }
-  }
-  return null;
-}
-
-/* Commande données mensuelles — années de la plus récente à la plus ancienne */
-async function orderMFData(stationId){
-  var years=[2023,2022,2021,2020,2019];
-  var orderIds=[];
-  for(var i=0;i<years.length;i++){
-    var y=years[i];
-    setMFStatus('⌛ Commande '+y+'… ('+(i+1)+'/5)');
-    var url=MF_BASE+'/commande-station/mensuelle'
-      +'?id-station='+encodeURIComponent(stationId)
-      +'&date-deb-periode='+y+'-01-01T00%3A00%3A00Z'
-      +'&date-fin-periode='+y+'-12-31T00%3A00%3A00Z';
-    var res=await mfCall(url,'GET',null);
-    if(!res.ok){ setMFStatus('⚠️ '+y+' refusée ('+res.status+')'); continue; }
-    var orderId=extractOrderId(res.data);
-    if(orderId){ orderIds.push({id:orderId,year:y}); }
-    else{ setMFStatus('⚠️ ID introuvable pour '+y+' : '+JSON.stringify(res.data).substring(0,120)); }
-  }
-  if(orderIds.length===0) throw new Error('Aucune commande acceptée pour cette station.');
-  return orderIds;
-}
-
-async function pollAndDownloadAll(orderIds){
-  var allData=[];
-  var loaded=0;
-  for(var i=0;i<orderIds.length;i++){
-    var item=orderIds[i];
-    setMFStatus('⌛ Attente données '+item.year+'…');
-    var status=await pollMFOrder(item.id);
-    if(status==='failed'){
-      setMFStatus('⚠️ '+item.year+' : pas de données disponibles, on passe…');
-      await new Promise(function(r){setTimeout(r,1000);});
-      continue;
-    }
-    setMFStatus('⌛ Téléchargement '+item.year+'…');
-    var csv=await downloadMFData(item.id);
-    var parsed=parseMFCsv(csv);
-    allData=allData.concat(parsed);
-    loaded++;
-    setMFStatus('✅ '+item.year+' OK ('+parsed.length+' mois)');
-  }
-  if(allData.length===0) throw new Error('Aucune donnée disponible pour cette station sur 2019–2023. Essayez une autre adresse ou un site plus proche d\'une station active.');
-  setMFStatus('✅ '+loaded+' année(s) chargée(s) — '+allData.length+' points au total');
-  return allData;
-}
-
-/* Poll until order is ready (max 20 attempts × 3s) */
-async function pollMFOrder(orderId){
-  for(var i=0;i<40;i++){
-    await new Promise(function(r){setTimeout(r,5000);});
-    var url=MF_BASE+'/commande/fichier?id-cmde='+orderId;
-    var res=await mfCall(url);
-    var rawStr=typeof res.data==='string'?res.data:JSON.stringify(res.data);
-    setMFStatus('⌛ Préparation… tentative '+(i+1)+'/40 · statut: '+rawStr.substring(0,120));
-
-    /* Échec explicite MF → on abandonne cette commande */
-    if(rawStr.toLowerCase().includes('échec')||rawStr.toLowerCase().includes('echec')
-      ||rawStr.toLowerCase().includes('erreur')||rawStr.toLowerCase().includes('error')){
-      return 'failed';
-    }
-    /* Prêt */
-    if(res.status===201) return 'ok';
-    if(res.status===200){
-      var state=res.data&&(res.data.etat||res.data.statut||res.data.status||res.data.state||'');
-      var stateStr=String(state).toLowerCase();
-      if(stateStr.includes('termin')||stateStr==='ok'||stateStr==='done'
-        ||stateStr===''||res.data===null) return 'ok';
-    }
-  }
-  return 'failed';
-}
-
-/* Download CSV data */
-async function downloadMFData(orderId){
-  setMFStatus('⌛ Téléchargement du fichier de données…');
-  var url=MF_BASE+'/commande/fichier/telecharger?id-cmde='+orderId;
-  var res=await mfCall(url);
-  if(!res.ok) throw new Error('Erreur téléchargement ('+res.status+')');
-  return res.data; /* CSV text */
-}
-
-/* Parse MF CSV (mensuel ou horaire) → [{s, d, m}] */
-function parseMFCsv(csv){
-  var lines=csv.trim().split('\n');
-  if(lines.length<2) throw new Error('Fichier CSV vide ou invalide.');
-  var sep=lines[0].includes(';')?';':',';
-  var headers=lines[0].split(sep).map(function(h){return h.trim().replace(/["\r]/g,'').toUpperCase();});
-
-  function col(){
-    for(var i=0;i<arguments.length;i++){
-      var idx=headers.indexOf(arguments[i]);
-      if(idx>=0)return idx;
-    }
-    return -1;
-  }
-  var iDate=col('AAAAMMJJHH','AAAAMM','DATE','DATETIME','DATEHEURE','AAAAMMJJ');
-  var iFF=col('FF','FF_H','FF10M','VITESSE_VENT','WIND_SPEED','FXY','FFM');
-  var iDD=col('DD','DD_H','DD10M','DIRECTION_VENT','WIND_DIR','DDM');
-
-  if(iDate<0||iFF<0) throw new Error('Colonnes introuvables. En-têtes : '+headers.join(', '));
-
-  var result=[];
-  for(var i=1;i<lines.length;i++){
-    var cols=lines[i].split(sep).map(function(c){return c.trim().replace(/["\r]/g,'');});
-    if(cols.length<Math.max(iDate,iFF)+1) continue;
-    var dateStr=cols[iDate];
-    var month=null;
-    /* Format AAAAMM (mensuel) ou AAAAMMJJHH (horaire) ou AAAAMMJJ */
-    if(dateStr.length>=6){
-      month=parseInt(dateStr.substring(4,6),10)-1;
-    }
-    var speed=parseFloat(cols[iFF].replace(',','.'));
-    var dir=iDD>=0?parseFloat(cols[iDD].replace(',','.')):NaN;
-    if(isNaN(speed)||speed<0||month===null||month<0||month>11) continue;
-    result.push({s:speed,d:isNaN(dir)?-1:dir,m:month});
-  }
-  return result;
-}
-
-/* Compute stats from MF hourly data (same as ERA5 pipeline) */
-function computeMFStats(data){
-  var mo=Array(12).fill(null).map(function(){return{s:0,n:0};});
-  var secCts=Array(16).fill(0);
-  var sm=0,cl=0;
-  data.forEach(function(x){
-    sm+=x.s; if(x.s<2)cl++;
-    mo[x.m].s+=x.s; mo[x.m].n++;
-    if(x.d>=0){var sec=d2s(x.d);secCts[sec]++;}
-  });
-  var n=data.length;
-  var avg=sm/n, cp=(cl/n)*100;
-  var ma=mo.map(function(m){return m.n?m.s/m.n:0;});
-  var ds=secCts.indexOf(Math.max.apply(null,secCts));
-
-  /* Days by threshold (group by day) */
-  var dayMap={};
-  data.forEach(function(x,i){
-    /* We don't have a date key here, use running index grouped by 24h */
-    /* Instead compute from monthly hours — approximate */
-  });
-  /* Simple approach: count hours ≥5m/s and ≥10m/s, convert to days */
-  var h5=0,h10=0;
-  data.forEach(function(x){if(x.s>=5)h5++;if(x.s>=10)h10++;});
-  var years=Math.max(1,n/8760);
-  var d5=h5/24/years, d10=h10/24/years;
-
-  return {avg:avg,ma:ma,dir:D16[ds],d5:d5,d10:d10,n:n,years:years};
-}
-
-/* Main entry point */
-async function loadMFStation(){
-  if(!chosen){setMFStatus('⚠️ Veuillez d\'abord analyser une adresse.');return;}
-  var btn=document.getElementById('mf-btn');
-  btn.disabled=true; btn.textContent='Chargement…';
-  document.getElementById('mf-badge').style.display='none';
-  document.getElementById('mf-metrics').style.display='none';
-  document.getElementById('mf-chart-card').style.display='none';
-
-  try{
-    /* 1. Département */
-    var dept=await getDept(chosen.lat,chosen.lon);
-    if(!dept) throw new Error('Impossible de déterminer le département depuis les coordonnées.');
-
-    /* 2. Top 3 stations les plus proches */
-    var stations=await findNearestStation(dept,chosen.lat,chosen.lon);
-    var mfData=null, station=null;
-
-    for(var si=0;si<stations.length;si++){
-      var s=stations[si];
-      setMFStatus('📡 Tentative station '+( si+1)+'/'+stations.length+' : '+s.nom+' ('+s._dist.toFixed(1)+' km)');
-      try{
-        var orderIds=await orderMFData(s.id);
-        var data=await pollAndDownloadAll(orderIds);
-        if(data.length>0){mfData=data;station=s;break;}
-      }catch(se){
-        setMFStatus('⚠️ Station '+s.nom+' : '+se.message.substring(0,80)+' — essai suivant…');
-        await new Promise(function(r){setTimeout(r,1500);});
-      }
-    }
-
-    if(!mfData||!station) throw new Error('Aucune des '+stations.length+' stations proches n\'a de données disponibles pour cette période.');
-
-    /* 3. Stats */
-    setMFStatus('⌛ Analyse des données…');
-    var mfStats=computeMFStats(mfData);
-
-    /* 4. Affichage */
-    showMFResults(station,station._dist.toFixed(1),mfStats,dept);
-    setMFStatus('');
-    btn.textContent='Recharger';
-
-  }catch(e){
-    setMFStatus('❌ '+e.message);
-    console.error('MF Error:',e);
-    btn.textContent='Réessayer';
-  }
-  btn.disabled=false;
-}
-
-function showMFResults(station,dist,mfStats,dept){
-  /* Badge */
-  document.getElementById('mf-sname').textContent=station.nom;
-  document.getElementById('mf-smeta').textContent=
-    'ID '+station.id+' · alt. '+station.alt+'m · '+dist+' km du site · dept '+dept
-    +' · '+Math.round(mfStats.n/8760*10)/10+' ans de données';
-  document.getElementById('mf-badge').style.display='flex';
-
-  /* Get ERA5 stats from globals */
-  var eraAvg=parseFloat(document.getElementById('v0').textContent)||0;
-  var eraDir=document.getElementById('v2').textContent||'—';
-  var eraD5=parseInt(document.getElementById('d5').textContent)||0;
-  var eraD10=parseInt(document.getElementById('d10').textContent)||0;
-
-  function delta(mf,era,unit){
-    var d=mf-era, pct=(era>0?(d/era*100):0);
-    var cls=Math.abs(d)<0.05?'neu':d>0?'pos':'neg';
-    return '<span class="cmc-delta '+cls+'">'+(d>=0?'+':'')+d.toFixed(1)+' '+unit+' (ERA5 : '+era.toFixed(1)+')</span>';
-  }
-
-  document.getElementById('cm-era-avg').textContent=eraAvg.toFixed(1);
-  document.getElementById('cm-mf-avg').textContent=mfStats.avg.toFixed(1);
-  document.getElementById('cm-delta-avg').innerHTML=delta(mfStats.avg,eraAvg,'m/s');
-
-  document.getElementById('cm-era-dir').textContent=eraDir;
-  document.getElementById('cm-mf-dir').textContent=mfStats.dir;
-
-  document.getElementById('cm-era-d5').textContent=eraD5;
-  document.getElementById('cm-mf-d5').textContent=Math.round(mfStats.d5);
-  document.getElementById('cm-delta-d5').innerHTML=delta(mfStats.d5,eraD5,'j');
-
-  document.getElementById('cm-era-d10').textContent=eraD10;
-  document.getElementById('cm-mf-d10').textContent=Math.round(mfStats.d10);
-  document.getElementById('cm-delta-d10').innerHTML=delta(mfStats.d10,eraD10,'j');
-
-  document.getElementById('mf-metrics').style.display='grid';
-
-  /* Chart */
-  drawMFComparison(simMonthlyAvg,mfStats.ma);
-
-  /* Interpretation note */
-  var diff=mfStats.avg-eraAvg;
-  var note='';
-  if(Math.abs(diff)<0.3){
-    note='✅ ERA5 et la station MF sont en <strong>très bon accord</strong> (écart < 0,3 m/s). La réanalyse est fiable pour ce site.';
-  } else if(diff>0){
-    note='📈 La station MF mesure <strong>'+diff.toFixed(1)+' m/s de plus</strong> qu\'ERA5. '
-      +'ERA5 sous-estime probablement le potentiel réel — effet de terrain local, exposition favorable, ou altitude.';
-  } else {
-    note='📉 La station MF mesure <strong>'+Math.abs(diff).toFixed(1)+' m/s de moins</strong> qu\'ERA5. '
-      +'La station est peut-être dans un site abrité (vallée, zone urbaine). Le site d\'installation peut être plus venteux.';
-  }
-  document.getElementById('mf-note').innerHTML=note;
-  document.getElementById('mf-chart-card').style.display='block';
-}
-
-function drawMFComparison(eraMonthly,mfMonthly){
-  if(mfChartInst)mfChartInst.destroy();
-  mfChartInst=new Chart(document.getElementById('mfch'),{
-    type:'bar',
-    data:{
-      labels:['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
-      datasets:[
-        {
-          label:'ERA5',
-          data:eraMonthly.map(function(v){return parseFloat(v.toFixed(2));}),
-          backgroundColor:'rgba(26,95,168,.75)',
-          borderRadius:4,borderSkipped:false
-        },
-        {
-          label:'Station MF',
-          data:mfMonthly.map(function(v){return parseFloat(v.toFixed(2));}),
-          backgroundColor:'rgba(26,148,105,.78)',
-          borderRadius:4,borderSkipped:false
-        }
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+c.parsed.y.toFixed(2)+' m/s';}}}
-      },
-      scales:{
-        x:{ticks:{color:'#94A3B8',font:{size:10},autoSkip:false,maxRotation:0},grid:{display:false},border:{display:false}},
-        y:{min:0,ticks:{color:'#94A3B8',font:{size:10},callback:function(v){return v.toFixed(1);}},grid:{color:'rgba(0,0,0,0.05)'},border:{display:false}}
-      }
-    }
-  });
 }
 
 /* ── ROI ─────────────────────────────────────────────────── */
@@ -1567,15 +1053,14 @@ function computeROI(){
 
   /* KPIs */
   document.getElementById('rk-cost').textContent=fmtEur(cost);
-  document.getElementById('rk-eco-avg').textContent=ecoAvg>0?fmtEur(ecoAvg):'—';
   document.getElementById('rk-eco-real').textContent=ecoReal>0?fmtEur(ecoReal):'—';
 
-  /* ROI badges */
+  /* Badges */
   function setRoi(valId,subId,eco){
     if(eco<=0){document.getElementById(valId).textContent='∞';document.getElementById(subId).textContent='Production insuffisante';return;}
     var yrs=cost/eco;
     document.getElementById(valId).textContent=roiLabel(yrs);
-    document.getElementById(subId).textContent='soit '+yrs.toFixed(1)+' années';
+    document.getElementById(subId).textContent='soit '+Math.round(yrs*12)+' mois';
   }
   setRoi('rb-avg','rb-avg-sub',ecoAvg);
   setRoi('rb-real','rb-real-sub',ecoReal);
@@ -1585,15 +1070,10 @@ function computeROI(){
 
 function drawROI(cost,ecoAvg,ecoReal){
   if(roiChartInst)roiChartInst.destroy();
-
   var years=Array.from({length:21},function(_,i){return i;});
   var cumAvg=years.map(function(y){return y*ecoAvg;});
   var cumReal=years.map(function(y){return y*ecoReal;});
   var costLine=years.map(function(){return cost;});
-
-  /* Find ROI year labels */
-  var roiAvgY=ecoAvg>0?cost/ecoAvg:null;
-  var roiRealY=ecoReal>0?cost/ecoReal:null;
 
   roiChartInst=new Chart(document.getElementById('roich'),{
     type:'line',
@@ -1601,14 +1081,14 @@ function drawROI(cost,ecoAvg,ecoReal){
       labels:years,
       datasets:[
         {
-          label:'Économies cumulées · v. moy.',
+          label:'Économies · vent moyen',
           data:cumAvg,
-          borderColor:'rgba(100,116,139,.7)',
+          borderColor:'rgba(100,116,139,.75)',
           backgroundColor:'rgba(100,116,139,.07)',
           borderWidth:2,fill:true,tension:.3,pointRadius:0,pointHoverRadius:4
         },
         {
-          label:'Économies cumulées · ERA5 réel',
+          label:'Économies · ERA5 réel',
           data:cumReal,
           borderColor:'rgba(26,95,168,.85)',
           backgroundColor:'rgba(26,95,168,.08)',
@@ -1627,29 +1107,17 @@ function drawROI(cost,ecoAvg,ecoReal){
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{
-          callbacks:{
-            title:function(items){return 'Année '+items[0].label;},
-            label:function(c){
-              if(c.datasetIndex===2)return 'Coût : '+fmtEur(c.parsed.y);
-              return c.dataset.label.split('·')[1].trim()+' : '+fmtEur(c.parsed.y);
-            }
+        tooltip:{callbacks:{
+          title:function(items){return 'Année '+items[0].label;},
+          label:function(c){
+            if(c.datasetIndex===2)return 'Coût : '+fmtEur(c.parsed.y);
+            return c.dataset.label+' : '+fmtEur(c.parsed.y);
           }
-        },
-        annotation:roiAvgY||roiRealY?{annotations:{}}:undefined
+        }}
       },
       scales:{
-        x:{
-          title:{display:true,text:'Années',color:'#94A3B8',font:{size:10}},
-          ticks:{color:'#94A3B8',font:{size:10}},
-          grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}
-        },
-        y:{
-          min:0,
-          title:{display:true,text:'€ cumulés',color:'#94A3B8',font:{size:10}},
-          ticks:{color:'#94A3B8',font:{size:10},callback:function(v){return fmtEur(v);}},
-          grid:{color:'rgba(0,0,0,0.05)'},border:{display:false}
-        }
+        x:{title:{display:true,text:'Années',color:'#94A3B8',font:{size:10}},ticks:{color:'#94A3B8',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}},
+        y:{min:0,title:{display:true,text:'€ cumulés',color:'#94A3B8',font:{size:10}},ticks:{color:'#94A3B8',font:{size:10},callback:function(v){return fmtEur(v);}},grid:{color:'rgba(0,0,0,0.05)'},border:{display:false}}
       }
     }
   });
@@ -1657,8 +1125,7 @@ function drawROI(cost,ecoAvg,ecoReal){
 
 
 /* Boot */
-ainp.value='Theix-Noyalo, Morbihan, France';
-doAnalysis();
+ainp.value='';
 </script>
 </body>
 </html>
