@@ -160,6 +160,19 @@ body{
 .pot-card.exc{border-left:4px solid var(--purple);background:var(--purple-light);}
 .pot-card.exc .pot-head{color:var(--purple);}
 
+/* Solar potential section 1 */
+.solar-pot-card{
+  display:none;margin-top:1rem;background:var(--card);
+  border-radius:var(--r-md);border:1.5px solid var(--border);
+  box-shadow:var(--sh-sm);padding:1rem;
+}
+.solar-pot-header{display:flex;align-items:center;gap:10px;margin-bottom:.875rem;}
+.solar-pot-icon{font-size:20px;}
+.solar-pot-title{font-size:13px;font-weight:700;color:#92400e;}
+.solar-pot-sub{font-size:11px;color:#b45309;}
+.solar-pot-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:.875rem;}
+.solar-pot-chart-wrap{position:relative;height:140px;}
+
 /* ── Simulator ────────────────────────────────────────────── */
 .sim-section{
   display:none;margin-top:1.25rem;
@@ -244,6 +257,47 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
   border-radius:var(--r-md);font-size:12px;color:#1e3a5f;line-height:1.6;
 }
 .sim-note strong{font-weight:700;}
+.td-solar{color:#d97706;font-weight:600;}
+
+/* ── Hybrid solar toggle ──────────────────────────────────── */
+.hybrid-card{
+  display:none;margin-bottom:1.25rem;
+  background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);
+  border:1.5px solid rgba(245,158,11,.35);
+  border-radius:var(--r-md);padding:.875rem 1.25rem;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+}
+.hybrid-card.disabled{opacity:.5;pointer-events:none;}
+.hybrid-card-left{display:flex;align-items:center;gap:.875rem;}
+.hybrid-icon{font-size:26px;flex-shrink:0;}
+.hybrid-title{font-size:13px;font-weight:700;color:#92400e;margin-bottom:2px;}
+.hybrid-sub{font-size:11px;color:#b45309;line-height:1.4;}
+.hybrid-lock{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* Toggle switch */
+.toggle-wrap{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.toggle-label{font-size:12px;font-weight:600;color:#92400e;white-space:nowrap;}
+.toggle-sw{position:relative;width:44px;height:24px;flex-shrink:0;}
+.toggle-sw input{opacity:0;width:0;height:0;}
+.toggle-slider{
+  position:absolute;inset:0;border-radius:24px;cursor:pointer;
+  background:#d1d5db;transition:background .2s;
+}
+.toggle-slider::before{
+  content:'';position:absolute;left:3px;top:3px;
+  width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s;
+}
+.toggle-sw input:checked+.toggle-slider{background:#f59e0b;}
+.toggle-sw input:checked+.toggle-slider::before{transform:translateX(20px);}
+
+/* Solar summary */
+.solar-summary{
+  display:none;background:#fffbeb;border:1.5px solid rgba(245,158,11,.3);
+  border-radius:var(--r-md);padding:1rem;margin-bottom:1rem;
+}
+.solar-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:.75rem;}
+.solar-note{font-size:11px;color:#b45309;line-height:1.6;}
 
 /* ── ROI ──────────────────────────────────────────────────── */
 .roi-section{
@@ -391,6 +445,36 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
     <div><div class="pot-head" id="pot-head">—</div><div class="pot-body" id="pot-body"></div></div>
   </div>
 
+  <!-- Potentiel solaire section 1 -->
+  <div class="solar-pot-card" id="solar-pot-card">
+    <div class="solar-pot-header">
+      <div class="solar-pot-icon">☀️</div>
+      <div>
+        <div class="solar-pot-title">Potentiel solaire</div>
+        <div class="solar-pot-sub">Données ERA5 · irradiance au sol · 2019–2023</div>
+      </div>
+    </div>
+    <div class="solar-pot-kpis">
+      <div class="kc" style="--accent:#f59e0b;">
+        <div class="kl">Irradiance moy.</div>
+        <div class="kv" id="sol-irr">—</div>
+        <span style="font-size:10px;color:var(--muted);">W/m²</span>
+      </div>
+      <div class="kc" style="--accent:#f59e0b;">
+        <div class="kl">Heures de soleil</div>
+        <div class="kv" id="sol-hpd">—</div>
+        <span style="font-size:10px;color:var(--muted);">kWh/m²/jour</span>
+      </div>
+      <div class="kc" style="--accent:#f59e0b;">
+        <div class="kl">Énergie annuelle</div>
+        <div class="kv" id="sol-ann">—</div>
+        <span style="font-size:10px;color:var(--muted);">kWh/m²/an</span>
+      </div>
+    </div>
+    <div class="chart-title" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:.5rem;">Irradiance mensuelle moyenne (W/m²)</div>
+    <div class="solar-pot-chart-wrap"><canvas id="solch" role="img" aria-label="Irradiance solaire mensuelle">Chargement.</canvas></div>
+  </div>
+
   <!-- ── Simulator ─────────────────────────────────────────── -->
   <div class="sim-section" id="sim">
     <div class="sim-header">
@@ -402,7 +486,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
     </div>
     <div class="sim-body">
 
-      <!-- Dual inputs -->
+      <!-- Paramètres simulateur -->
       <div class="sim-inputs">
         <div class="sim-input-block">
           <div class="sim-input-label">Nombre d'éoliennes</div>
@@ -411,7 +495,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
             <input type="number" id="inp-turbines" class="sim-num" min="1" max="9999" value="6" oninput="onTurbinesChange()">
             <span class="sim-num-unit">turbines</span>
           </div>
-          <div class="sim-derived" id="der-turbines">Surface : <strong>1,782 m²</strong></div>
+          <div class="sim-derived" id="der-turbines">Surface totale : <strong>1,782 m²</strong></div>
         </div>
         <div class="sim-input-block">
           <div class="sim-input-label">Nombre de structures</div>
@@ -420,7 +504,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
             <input type="number" id="inp-struct" class="sim-num" min="1" max="9999" value="1" oninput="onStructChange()">
             <span class="sim-num-unit">structures</span>
           </div>
-          <div class="sim-derived" id="der-struct">= <strong>6 turbines</strong> · Surface : <strong>1,782 m²</strong></div>
+          <div class="sim-derived" id="der-struct">= <strong>6 turbines</strong></div>
         </div>
         <div class="sim-input-block">
           <div class="sim-input-label">Puissance moyenne / turbine</div>
@@ -430,6 +514,19 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
             <span class="sim-num-unit">W / turbine</span>
           </div>
           <div class="sim-derived" id="der-pmoy">Puissance totale installation : <strong id="der-pmoy-total">—</strong></div>
+        </div>
+        <!-- Option hybride solaire — 4e bloc d'input -->
+        <div class="sim-input-block" id="hybrid-input-block" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid rgba(245,158,11,.35);">
+          <div class="sim-input-label" style="color:#92400e;">☀️ Option hybride solaire</div>
+          <div class="sim-input-sub" style="color:#b45309;">3 panneaux 300 Wc / tranche de 18 turbines</div>
+          <div class="sim-input-row" style="margin-top:.625rem;align-items:center;gap:.75rem;">
+            <label class="toggle-sw">
+              <input type="checkbox" id="hybrid-check" onchange="onHybridChange()">
+              <span class="toggle-slider"></span>
+            </label>
+            <span style="font-size:12px;font-weight:600;color:#92400e;" id="hybrid-toggle-label">Désactivé</span>
+          </div>
+          <div class="sim-derived" id="hybrid-lock" style="color:#b45309;"></div>
         </div>
       </div>
 
@@ -463,23 +560,27 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
 
       <!-- Production table -->
       <div class="prod-table-wrap">
-        <table class="prod-table">
-          <thead>
+        <table class="prod-table" id="prod-table">
+          <thead id="prod-thead">
             <tr>
               <th>Mois</th>
-              <th>Heures de vent (h)</th>
-              <th>Prod. vent moyen (kWh)</th>
-              <th>Prod. réelle ERA5 (kWh)</th>
-              <th>Gain variabilité</th>
+              <th>Heures vent (h)</th>
+              <th>Éolien vent moy. (kWh)</th>
+              <th>Éolien ERA5 réel (kWh)</th>
+              <th id="th-solar" style="display:none;">Solaire (kWh)</th>
+              <th id="th-hybrid" style="display:none;">Total hybride (kWh)</th>
+              <th>Gain variab.</th>
             </tr>
           </thead>
           <tbody id="prod-tbody"></tbody>
           <tfoot>
             <tr>
               <td>Total annuel</td>
-              <td class="td-avg" id="ft-avg">—</td>
-              <td class="td-avg" id="ft-avg2">—</td>
+              <td id="ft-avg">—</td>
+              <td id="ft-avg2">—</td>
               <td class="td-real" id="ft-real">—</td>
+              <td id="ft-solar" style="display:none;" class="td-solar">—</td>
+              <td id="ft-hybrid-total" style="display:none;" class="td-solar">—</td>
               <td class="td-bonus" id="ft-bonus">—</td>
             </tr>
           </tfoot>
@@ -665,19 +766,25 @@ async function runAnalysis(lat,lon,dn){
   gmap.setView([lat,lon],11,{animate:true});
   try{
     var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
-      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=UTC';
+      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_direction_10m,shortwave_radiation&wind_speed_unit=ms&timezone=UTC';
     var res=await fetch(url),meteo=await res.json();
     if(!meteo.hourly){setSt('Erreur lors de la récupération des données météo.');return;}
     setSt('⌛ Calcul des statistiques…');
 
     var sp=meteo.hourly.wind_speed_10m, di=meteo.hourly.wind_direction_10m, tm=meteo.hourly.time;
+    var sr=meteo.hourly.shortwave_radiation||[];
     var vd=[];
     window.simHours=[];
+    window.simSolarHours=[];
     for(var i=0;i<sp.length;i++){
+      var mo_=parseInt(tm[i].slice(5,7))-1;
       if(sp[i]!==null&&di[i]!==null){
-        var mo_=parseInt(tm[i].slice(5,7))-1;
         vd.push({s:sp[i],d:di[i],m:mo_});
         window.simHours.push({s:sp[i],m:mo_});
+      }
+      /* Solar: store all hours with valid radiation */
+      if(sr[i]!==null&&sr[i]!==undefined&&sr[i]>0){
+        window.simSolarHours.push({g:sr[i],m:mo_});
       }
     }
 
@@ -690,6 +797,7 @@ async function runAnalysis(lat,lon,dn){
     var scts=Array(16).fill(0), ssps=Array(16).fill(0);
     vd.forEach(function(x){var s=d2s(x.d);scts[s]++;ssps[s]+=x.s;});
     var ds=scts.indexOf(Math.max.apply(null,scts));
+    window.simDomDirSec=ds; /* stocké pour le calcul PVGIS aspect */
 
     var mo=Array(12).fill(null).map(function(){return{s:0,n:0};});
     vd.forEach(function(x){mo[x.m].s+=x.s;mo[x.m].n++;});
@@ -762,6 +870,13 @@ async function runAnalysis(lat,lon,dn){
     computeProduction(initT);
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
+    /* Reset hybrid on new analysis */
+    document.getElementById('hybrid-check').checked=false;
+    document.getElementById('hybrid-toggle-label').textContent='Désactivé';
+    updateHybridCard(initT);
+    document.getElementById('solar-pot-card').style.display='block';
+    computeSolarPotential();
+    fetchPVGIS(lat, lon);
 
     updateMap(lat,lon,scts,ssps,n,avg,D16[ds],place);
     drawMonthly(ma);
@@ -926,9 +1041,9 @@ function onStructChange(){
 }
 
 function updateDerived(t){
-  var s=Math.ceil(t/TURB_PER_STRUCT);
   document.getElementById('der-turbines').innerHTML='Surface totale : <strong>'+(t*SIM_A_UNIT).toFixed(3)+' m²</strong>';
   document.getElementById('der-struct').innerHTML='= <strong>'+t+' turbines</strong>';
+  if(typeof updateHybridCard==='function') updateHybridCard(t);
 }
 
 function fmt(v){
@@ -959,28 +1074,31 @@ function computeProduction(N){
 
   var realAnnualH=realTotalH/simTotalYears;
 
-  /* ── Référence commune : v³ annuel moyen issu des données horaires réelles ── */
-  var v3AnnualAvg=realTotalH>0?realTotalV3/realTotalH:1;
-
-  /* ── Méthode réelle ERA5 : E[v³] heure par heure ── */
-  var realMonthKwh=realMonthH.map(function(h,m){
-    if(h===0) return 0;
-    var v3MoyMois=realMonthV3[m]/h;               /* E[v³] réel du mois */
-    var pEff=pmoyTotal*(v3MoyMois/v3AnnualAvg);   /* W pondéré */
-    return pEff*(h/simTotalYears)/1000;
-  });
-  var realAnnualKwh=realMonthKwh.reduce(function(a,b){return a+b;},0);
-
-  /* ── Méthode vent moyen : (v_moy)³ par mois — MÊME référence v3AnnualAvg ── */
-  /* Jensen garantit v³_moy_réel ≥ (v_moy)³ → gain toujours positif */
-  var avgMonthKwh=realMonthH.map(function(h,m){
-    if(h===0) return 0;
+  /* ── Référence commune basée sur les v_moy_mois³ ──
+     Les deux méthodes utilisent la même base → le gain mesure UNIQUEMENT l'effet Jensen
+     (variabilité horaire réelle vs vitesse moyenne constante par mois) */
+  var v3SimpleRef=realMonthH.reduce(function(acc,h,m){
     var vMoy=simMonthlyAvg[m]||0;
-    var v3Moy=vMoy*vMoy*vMoy;                     /* (v_moy)³ simplifié */
-    var pEff=pmoyTotal*(v3Moy/v3AnnualAvg);       /* même référence */
+    return acc+(vMoy*vMoy*vMoy)*(h/realTotalH||0);
+  },0)||1;
+
+  /* ── Méthode vent moyen : (v_moy_mois)³ — pondération saisonnière ── */
+  var avgMonthKwh=realMonthH.map(function(h,m){
+    if(h===0)return 0;
+    var vMoy=simMonthlyAvg[m]||0;
+    var pEff=pmoyTotal*((vMoy*vMoy*vMoy)/v3SimpleRef);
     return pEff*(h/simTotalYears)/1000;
   });
   var avgAnnualKwh=avgMonthKwh.reduce(function(a,b){return a+b;},0);
+
+  /* ── Méthode réelle ERA5 : E[v³] heure par heure — même référence ── */
+  var realMonthKwh=realMonthH.map(function(h,m){
+    if(h===0)return 0;
+    var v3MoyHoraire=realMonthV3[m]/h;            /* E[v³] réel du mois */
+    var pEff=pmoyTotal*(v3MoyHoraire/v3SimpleRef); /* même étalon */
+    return pEff*(h/simTotalYears)/1000;
+  });
+  var realAnnualKwh=realMonthKwh.reduce(function(a,b){return a+b;},0);
 
   /* ── KPIs ── */
   var perTurbine=realAnnualKwh/N;
@@ -994,24 +1112,36 @@ function computeProduction(N){
   lastRealKwh=realAnnualKwh;
   lastAvgKwh=avgAnnualKwh;
 
-  /* ── Tableau mensuel ── */
+  /* ── Tableau mensuel avec colonnes solaires dynamiques ── */
   var tbody=document.getElementById('prod-tbody');
   tbody.innerHTML='';
+  var hybridOn=document.getElementById('hybrid-check')&&document.getElementById('hybrid-check').checked;
+  if(hybridOn) computeSolar(N);
+  var solMonth=window.solMonthKwh||Array(12).fill(0);
+
   for(var m=0;m<12;m++){
     var mH=Math.round(realMonthH[m]/simTotalYears);
     var gain=avgMonthKwh[m]>0?((realMonthKwh[m]-avgMonthKwh[m])/avgMonthKwh[m]*100):0;
+    var solKwh=solMonth[m]||0;
+    var hybTotal=realMonthKwh[m]+solKwh;
+    var dSol=hybridOn?'':'none';
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="td-month">'+SIM_MONTHS[m]+'</td>'
       +'<td class="td-avg">'+mH+'</td>'
       +'<td class="td-avg">'+fmt(avgMonthKwh[m])+'</td>'
       +'<td class="td-real">'+fmt(realMonthKwh[m])+'</td>'
+      +'<td class="td-solar td-solar-cell" style="display:'+dSol+';">'+fmt(solKwh)+'</td>'
+      +'<td class="td-solar td-solar-cell" style="display:'+dSol+';">'+fmt(hybTotal)+'</td>'
       +'<td class="td-bonus">'+(gain>=0?'+':'')+gain.toFixed(1)+'%</td>';
     tbody.appendChild(tr);
   }
   var gainAnnual=avgAnnualKwh>0?((realAnnualKwh-avgAnnualKwh)/avgAnnualKwh*100):0;
+  var solAnn=window.lastSolarKwh||0;
   document.getElementById('ft-avg').textContent=Math.round(realAnnualH)+' h';
   document.getElementById('ft-avg2').textContent=fmt(avgAnnualKwh);
   document.getElementById('ft-real').textContent=fmt(realAnnualKwh);
+  document.getElementById('ft-solar').textContent=fmt(solAnn);
+  document.getElementById('ft-hybrid-total').textContent=fmt(realAnnualKwh+solAnn);
   document.getElementById('ft-bonus').textContent='+'+gainAnnual.toFixed(1)+'%';
 
   /* ROI */
@@ -1021,7 +1151,8 @@ function computeProduction(N){
 /* ── ROI ─────────────────────────────────────────────────── */
 var roiChartInst=null;
 /* Globals set by computeProduction: */
-var lastRealKwh=0, lastAvgKwh=0;
+var lastRealKwh=0, lastAvgKwh=0, lastHybridKwh=0;
+window.lastSolarKwh=0;
 
 function onRoiChange(){ computeROI(); }
 
@@ -1042,10 +1173,11 @@ function computeROI(){
   var priceUnit=parseFloat(document.getElementById('roi-price').value)||1000;
   var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.22;
   var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  var hybridOn=document.getElementById('hybrid-check')&&document.getElementById('hybrid-check').checked&&N>=HYBRID_MIN;
 
   var cost=N*priceUnit;
   var ecoAvg=lastAvgKwh*priceKwh;
-  var ecoReal=lastRealKwh*priceKwh;
+  var ecoReal=(hybridOn&&lastHybridKwh>0?lastHybridKwh:lastRealKwh)*priceKwh;
 
   /* KPIs */
   document.getElementById('rk-cost').textContent=fmtEur(cost);
@@ -1119,6 +1251,189 @@ function drawROI(cost,ecoAvg,ecoReal){
   });
 }
 
+
+/* ── Hybrid solar ────────────────────────────────────────── */
+var HYBRID_MIN=18;
+var HYBRID_PRICE=1200;
+var STD_PRICE=1000;
+var PANEL_WC=300;
+var PANEL_EFF=0.10;
+var solPotChartInst=null;
+
+function nPanels(N){ return N>=HYBRID_MIN?Math.ceil(N/18)*3:0; }
+
+function updateHybridCard(N){
+  var lock=document.getElementById('hybrid-lock');
+  var check=document.getElementById('hybrid-check');
+  var block=document.getElementById('hybrid-input-block');
+  if(N<HYBRID_MIN){
+    if(block) block.style.opacity='.5';
+    if(check) check.disabled=true;
+    if(lock) lock.textContent='⚠️ Disponible à partir de '+HYBRID_MIN+' turbines';
+  } else {
+    if(block) block.style.opacity='1';
+    if(check) check.disabled=false;
+    if(lock){
+      var np=nPanels(N);
+      lock.textContent=np+' panneaux · prix 1 200 € HT/turbine';
+    }
+  }
+}
+
+function setSolarCols(show){
+  ['th-solar','th-hybrid'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.display=show?'':'none';
+  });
+  ['ft-solar','ft-hybrid-total'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.display=show?'':'none';
+  });
+  /* Also update tbody rows */
+  var rows=document.querySelectorAll('#prod-tbody tr');
+  rows.forEach(function(row){
+    var cells=row.querySelectorAll('.td-solar-cell');
+    cells.forEach(function(cell){cell.style.display=show?'':'none';});
+  });
+}
+
+function onHybridChange(){
+  var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  var on=document.getElementById('hybrid-check').checked&&N>=HYBRID_MIN;
+  document.getElementById('hybrid-toggle-label').textContent=on?'Activé ✓':'Désactivé';
+  document.getElementById('roi-price').value=on?HYBRID_PRICE:STD_PRICE;
+  onRoiChange();
+  setSolarCols(on);
+  if(window.simHours) computeProduction(N);
+}
+
+/* ── PVGIS solar production ──────────────────────────────── */
+/* Conversion direction dominante ERA5 → aspect PVGIS
+   D16 secteurs : 0=N, 4=E, 8=S, 12=O
+   cap = index × 22.5°  →  aspect PVGIS = cap - 180 (0=sud, +90=ouest, -90=est) */
+function domDirToAspect(sec){
+  var cap=sec*22.5;
+  var aspect=cap-180;
+  /* normalise dans [-180, 180] */
+  if(aspect>180) aspect-=360;
+  return Math.round(aspect);
+}
+
+/* Données PVGIS mensuelles stockées globalement */
+window.pvgisMonthKwh=null; /* kWh/an par panneau, indexé par mois 0-11 */
+window.pvgisAnnualKwh=null;/* kWh/an par panneau */
+
+async function fetchPVGIS(lat, lon){
+  var ds=window.simDomDirSec||0;
+  var aspect=domDirToAspect(ds);
+  var nP=nPanels(parseInt(document.getElementById('inp-turbines').value)||1);
+  /* peakpower en kW : on envoie 1 panneau de 0.3 kW, on multipliera côté JS */
+  var params=new URLSearchParams({
+    lat:lat.toFixed(4),
+    lon:lon.toFixed(4),
+    peakpower:'0.3',   /* 1 panneau = 300 Wc = 0.3 kW */
+    loss:'14',
+    angle:'10',
+    aspect:aspect
+  });
+  try{
+    var resp=await fetch('/.netlify/functions/pvgis-proxy?'+params.toString());
+    var data=await resp.json();
+    if(data.error) throw new Error(data.error);
+    /* Extraire production mensuelle (kWh/mois pour 1 panneau) */
+    var monthly=data.outputs&&data.outputs.monthly&&data.outputs.monthly.fixed;
+    if(!monthly) throw new Error('Réponse PVGIS inattendue');
+    var mKwh=Array(12).fill(0);
+    monthly.forEach(function(m){
+      var idx=(m.month-1); /* month = 1-12 */
+      mKwh[idx]=m.E_m; /* kWh/mois pour 0.3 kW (1 panneau) */
+    });
+    var annual=data.outputs.totals&&data.outputs.totals.fixed&&data.outputs.totals.fixed.E_y;
+    window.pvgisMonthKwh=mKwh;
+    window.pvgisAnnualKwh=annual||mKwh.reduce(function(a,b){return a+b;},0);
+    /* Mettre à jour l'affichage si l'option hybride est active */
+    var N=parseInt(document.getElementById('inp-turbines').value)||1;
+    if(document.getElementById('hybrid-check')&&document.getElementById('hybrid-check').checked){
+      computeProduction(N);
+    }
+    /* Afficher info source dans la carte solaire */
+    var sub=document.querySelector('.solar-pot-sub');
+    if(sub) sub.textContent='PVGIS-SARAH3 · angle 10° · aspect '+aspect+'° (axe vent dominant '+D16[ds]+')';
+  }catch(e){
+    console.warn('PVGIS fallback vers ERA5:',e.message);
+    /* Pas de blocage — on garde le calcul ERA5 */
+  }
+}
+
+function computeSolarPotential(){
+  if(!window.simSolarHours||!window.simSolarHours.length) return;
+  var shr=window.simSolarHours;
+  var moSum=Array(12).fill(0), moCnt=Array(12).fill(0);
+  var totalSum=0;
+  shr.forEach(function(x){moSum[x.m]+=x.g;moCnt[x.m]++;totalSum+=x.g;});
+  var moAvg=moSum.map(function(s,m){return moCnt[m]>0?s/moCnt[m]:0;});
+  var annualAvg=shr.length>0?totalSum/shr.length:0;
+  /* kWh/m²/jour = (total W/m²·h / years) / 1000 / 365 */
+  var kwhPerDay=(totalSum/simTotalYears)/1000/365;
+  var kwhPerYear=(totalSum/simTotalYears)/1000;
+
+  document.getElementById('sol-irr').textContent=Math.round(annualAvg);
+  document.getElementById('sol-hpd').textContent=kwhPerDay.toFixed(2);
+  document.getElementById('sol-ann').textContent=Math.round(kwhPerYear);
+
+  /* Chart */
+  if(solPotChartInst) solPotChartInst.destroy();
+  solPotChartInst=new Chart(document.getElementById('solch'),{
+    type:'bar',
+    data:{
+      labels:['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
+      datasets:[{
+        data:moAvg.map(function(v){return Math.round(v);}),
+        backgroundColor:'rgba(245,158,11,.75)',
+        borderRadius:3,borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y+' W/m²';}}}},
+      scales:{
+        x:{ticks:{color:'#94A3B8',font:{size:10},autoSkip:false,maxRotation:0},grid:{display:false},border:{display:false}},
+        y:{min:0,ticks:{color:'#94A3B8',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}}
+      }
+    }
+  });
+}
+
+function computeSolar(N){
+  var nP=nPanels(N);
+  if(!nP) return 0;
+
+  /* ── Priorité PVGIS — données satellite SARAH3, plus précises ── */
+  if(window.pvgisMonthKwh){
+    var solMonthKwh=window.pvgisMonthKwh.map(function(kwh){return kwh*nP;});
+    var solAnnualKwh=solMonthKwh.reduce(function(a,b){return a+b;},0);
+    window.lastSolarKwh=solAnnualKwh;
+    window.solMonthKwh=solMonthKwh;
+    lastHybridKwh=lastRealKwh+solAnnualKwh;
+    return solAnnualKwh;
+  }
+
+  /* ── Fallback ERA5 shortwave si PVGIS pas encore chargé ── */
+  if(!window.simSolarHours) return 0;
+  var pNomTotal=nP*PANEL_WC*PANEL_EFF;
+  var solMonthWh=Array(12).fill(0);
+  var solTotalWh=0;
+  window.simSolarHours.forEach(function(x){
+    var wh=pNomTotal*(x.g/1000);
+    solMonthWh[x.m]+=wh;
+    solTotalWh+=wh;
+  });
+  var solAnnualKwh=solTotalWh/simTotalYears/1000;
+  window.lastSolarKwh=solAnnualKwh;
+  window.solMonthKwh=solMonthWh.map(function(v){return v/simTotalYears/1000;});
+  lastHybridKwh=lastRealKwh+solAnnualKwh;
+  return solAnnualKwh;
+}
 
 /* Boot */
 ainp.value='';
