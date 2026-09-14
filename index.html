@@ -762,23 +762,45 @@ async function doAnalysis(){
 
 async function runAnalysis(lat,lon,dn){
   var place=dn.split(',').slice(0,3).join(', ');
-  setSt('📍 '+place+'\n⌛ Téléchargement des archives ERA5 (5 ans — données horaires)…');
+  setSt('📍 '+place+'\n⌛ Chargement ERA5 année par année (évite les timeouts)…');
   gmap.setView([lat,lon],11,{animate:true});
   try{
-    var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
-      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_direction_10m,shortwave_radiation&wind_speed_unit=ms&timezone=UTC';
-    var res=await fetch(url);
-    if(!res.ok){
-      setSt('Erreur Open-Meteo ('+res.status+') — réessayez dans quelques secondes.');
-      return;
+    /* ── Requêtes annuelles — évite le timeout du streaming 5 ans ── */
+    var YEARS=[2019,2020,2021,2022,2023];
+    var sp=[],di=[],tm=[],sr=[];
+
+    for(var yi=0;yi<YEARS.length;yi++){
+      var y=YEARS[yi];
+      setSt('📍 '+place+'\n⌛ Chargement ERA5 '+y+'… ('+(yi+1)+'/5)');
+      var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
+        +'&start_date='+y+'-01-01&end_date='+y+'-12-31'
+        +'&hourly=wind_speed_10m,wind_direction_10m,shortwave_radiation'
+        +'&wind_speed_unit=ms&timezone=UTC';
+      var res=await fetch(url);
+      if(!res.ok){
+        setSt('Erreur Open-Meteo '+y+' ('+res.status+') — réessayez dans quelques secondes.');
+        return;
+      }
+      var rawText=await res.text();
+      var meteoY;
+      try{ meteoY=JSON.parse(rawText); }
+      catch(e){
+        setSt('Erreur données '+y+' : réponse invalide. Réessayez.\n('+rawText.substring(0,80)+')');
+        return;
+      }
+      if(!meteoY.hourly||!meteoY.hourly.wind_speed_10m){
+        setSt('Données manquantes pour '+y+'. Réessayez.');
+        return;
+      }
+      sp=sp.concat(meteoY.hourly.wind_speed_10m);
+      di=di.concat(meteoY.hourly.wind_direction_10m);
+      tm=tm.concat(meteoY.hourly.time);
+      sr=sr.concat(meteoY.hourly.shortwave_radiation||[]);
     }
-    var rawText=await res.text();
-    var meteo;
-    try{ meteo=JSON.parse(rawText); }
-    catch(e){
-      setSt('Erreur de données : réponse Open-Meteo invalide. Réessayez dans quelques secondes.\n('+rawText.substring(0,80)+')');
-      return;
-    }
+
+    /* Reconstruire un objet meteo.hourly unifié */
+    var meteo={hourly:{wind_speed_10m:sp,wind_direction_10m:di,time:tm,shortwave_radiation:sr}};
+
     if(!meteo.hourly){setSt('Erreur lors de la récupération des données météo.');return;}
     setSt('⌛ Calcul des statistiques…');
 
