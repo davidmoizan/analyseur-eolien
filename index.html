@@ -767,7 +767,18 @@ async function runAnalysis(lat,lon,dn){
   try{
     var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
       +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_direction_10m,shortwave_radiation&wind_speed_unit=ms&timezone=UTC';
-    var res=await fetch(url),meteo=await res.json();
+    var res=await fetch(url);
+    if(!res.ok){
+      setSt('Erreur Open-Meteo ('+res.status+') — réessayez dans quelques secondes.');
+      return;
+    }
+    var rawText=await res.text();
+    var meteo;
+    try{ meteo=JSON.parse(rawText); }
+    catch(e){
+      setSt('Erreur de données : réponse Open-Meteo invalide. Réessayez dans quelques secondes.\n('+rawText.substring(0,80)+')');
+      return;
+    }
     if(!meteo.hourly){setSt('Erreur lors de la récupération des données météo.');return;}
     setSt('⌛ Calcul des statistiques…');
 
