@@ -246,6 +246,13 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
   border-radius:var(--r-md);font-size:12px;color:#1e3a5f;line-height:1.6;
 }
 .sim-note strong{font-weight:700;}
+.h-btn{
+  padding:4px 10px;font-size:11px;font-weight:600;
+  border:1.5px solid var(--border-med);border-radius:6px;
+  background:var(--card);color:var(--text);cursor:pointer;
+  transition:background .12s,color .12s;
+}
+.h-btn:hover,.h-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
 
 
 /* ── ROI ──────────────────────────────────────────────────── */
@@ -426,42 +433,68 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
           <div class="sim-derived" id="der-struct">= <strong>6 turbines</strong></div>
         </div>
         <div class="sim-input-block">
-          <div class="sim-input-label">Puissance moyenne / turbine</div>
-          <div class="sim-input-sub">Donnée fabricant Philéole (100W par turbine en fonctionnement)</div>
-          <div class="sim-input-row">
-            <input type="number" id="inp-pmoy" class="sim-num" min="1" max="99999" value="100" oninput="onPmoyChange()">
-            <span class="sim-num-unit">W / turbine</span>
+          <div class="sim-input-label">Hauteur d'installation</div>
+          <div class="sim-input-sub">Hauteur du centre du rotor au-dessus du sol</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.5rem;">
+            <button class="h-btn" onclick="setHeight(10)">10 m</button>
+            <button class="h-btn" onclick="setHeight(20)">20 m</button>
+            <button class="h-btn" onclick="setHeight(30)">30 m</button>
+            <button class="h-btn" onclick="setHeight(50)">50 m</button>
+            <button class="h-btn" onclick="setHeight(100)">100 m</button>
           </div>
-          <div class="sim-derived" id="der-pmoy">Puissance totale installation : <strong id="der-pmoy-total">—</strong></div>
+          <div class="sim-input-row">
+            <input type="number" id="inp-height" class="sim-num" min="10" max="100" value="10" oninput="onHeightChange()">
+            <span class="sim-num-unit">m</span>
+          </div>
+          <div class="sim-derived" id="der-height">Interpolation log ERA5 entre 10 m et 100 m</div>
         </div>
-
+        <div class="sim-input-block" style="background:var(--blue-light);border:1px solid rgba(26,95,168,.2);">
+          <div class="sim-input-label" style="color:var(--blue);">⚙️ Paramètres physiques Philéole</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.8;margin-top:.375rem;">
+            <div><strong>CP</strong> = 0,27 · <strong>A</strong> = 0,297 m²</div>
+            <div><strong>Démarrage</strong> ≥ 2 m/s · <strong>Max</strong> = 450 W/turbine</div>
+            <div><strong>P(v)</strong> = min(450 ; 0,04912 × v³)</div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:.5rem;font-style:italic;">Estimation théorique provisoire — courbe mesurée à venir</div>
+        </div>
       </div>
 
       <!-- KPIs -->
       <div class="sim-kpis">
         <div class="sk" style="--sk-color:var(--blue)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Production annuelle</div>
+          <div class="sk-lbl">Production brute — sim. horaire</div>
           <div class="sk-val" id="sk-real">—</div>
           <div class="sk-unit">kWh / an</div>
         </div>
         <div class="sk" style="--sk-color:var(--teal)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Par turbine</div>
-          <div class="sk-val" id="sk-perturbine">—</div>
-          <div class="sk-unit">kWh / an / turbine</div>
+          <div class="sk-lbl">Production nette (×<span id="sk-eff-label">80%</span>)</div>
+          <div class="sk-val" id="sk-net">—</div>
+          <div class="sk-unit">kWh / an</div>
         </div>
         <div class="sk" style="--sk-color:var(--purple)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Par mur (18 turbines)</div>
+          <div class="sk-lbl">Par mur (18 turbines) · brut</div>
           <div class="sk-val" id="sk-permur">—</div>
           <div class="sk-unit">kWh / an / mur</div>
         </div>
         <div class="sk" style="--sk-color:var(--amber)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Heures de vent ERA5</div>
+          <div class="sk-lbl">Heures productives (v ≥ 2 m/s)</div>
           <div class="sk-val" id="sk-hours">—</div>
-          <div class="sk-unit">h / an (v ≥ 2 m/s)</div>
+          <div class="sk-unit">h / an · hauteur <span id="sk-height-label">10 m</span></div>
+        </div>
+      </div>
+      <!-- Rendement global -->
+      <div style="background:var(--bg);border-radius:var(--r-md);padding:.75rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);">Coefficient de rendement global</div>
+          <div style="font-size:11px;color:var(--amber);font-style:italic;">Hypothèse provisoire — à confirmer par Philéole</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <input type="number" id="inp-eff" class="sim-num" min="1" max="100" step="1" value="80" oninput="onEffChange()" style="width:70px;">
+          <span class="sim-num-unit">% (génératrice, câblage, disponibilité…)</span>
         </div>
       </div>
 
@@ -471,10 +504,11 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
           <thead>
             <tr>
               <th>Mois</th>
-              <th>Heures de vent (h)</th>
-              <th>Prod. vent moyen (kWh)</th>
-              <th>Prod. réelle ERA5 (kWh)</th>
-              <th>Gain variabilité</th>
+              <th>Heures (h)</th>
+              <th>Vent moy. à <span id="th-height">10 m</span> (m/s)</th>
+              <th>Estimation simplifiée — brut (kWh)</th>
+              <th>Simulation horaire — brut (kWh)</th>
+              <th>Écart</th>
             </tr>
           </thead>
           <tbody id="prod-tbody"></tbody>
@@ -483,6 +517,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
               <td>Total annuel</td>
               <td id="ft-avg">—</td>
               <td id="ft-avg2">—</td>
+              <td id="ft-simple">—</td>
               <td class="td-real" id="ft-real">—</td>
               <td class="td-bonus" id="ft-bonus">—</td>
             </tr>
@@ -491,9 +526,10 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       </div>
 
       <div class="sim-note">
-        <strong>Vent moyen</strong> : P_moy pondérée par (v_moy_mois / v_moy_annuelle)³ × heures de vent.
-        <strong>Réel ERA5</strong> : P_moy pondérée par (v³_moyen_heure_par_heure / v³_annuel) × heures — intègre l'effet des rafales (Jensen).
-        Le gain mesure la production supplémentaire due à la variabilité réelle du vent.
+        <strong>⚠️ Estimation théorique provisoire</strong> en l'absence de courbe de puissance mesurée Philéole.
+        <strong>Estimation simplifiée</strong> : P(v_moy_mensuelle) × heures — ignore la variabilité intra-mensuelle.
+        <strong>Simulation horaire</strong> : Σ P(v_h à hauteur H) heure par heure sur 2019–2023 — les deux méthodes peuvent donner des totaux différents.
+        Formule : P = min(450 W ; 0,04912 × v³). La simulation ne prend pas encore en compte les interactions aérodynamiques entre les éoliennes d'une même structure.
       </div>
 
     </div>
@@ -551,13 +587,13 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="roi-badges">
         <div class="roi-badge avg-b">
           <div class="roi-badge-icon">🕐</div>
-          <div class="roi-badge-label">ROI · vent moyen</div>
+          <div class="roi-badge-label">Temps de retour · estimation simplifiée</div>
           <div class="roi-badge-val" id="rb-avg">—</div>
           <div class="roi-badge-sub" id="rb-avg-sub"></div>
         </div>
         <div class="roi-badge real-b">
           <div class="roi-badge-icon">⚡</div>
-          <div class="roi-badge-label">ROI · réel ERA5 (rafales)</div>
+          <div class="roi-badge-label">Temps de retour · simulation horaire</div>
           <div class="roi-badge-val" id="rb-real">—</div>
           <div class="roi-badge-sub" id="rb-real-sub"></div>
         </div>
@@ -567,8 +603,8 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="roi-chart-card">
         <div class="sec-lbl" style="margin-bottom:.5rem;">Courbe de remboursement cumulé sur 20 ans</div>
         <div class="roi-legend">
-          <div class="li"><div class="ld" style="background:rgba(100,116,139,.75)"></div>Économies · vent moyen</div>
-          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies · ERA5 réel</div>
+          <div class="li"><div class="ld" style="background:rgba(100,116,139,.75)"></div>Économies · estimation simplifiée</div>
+          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies · simulation horaire</div>
           <div class="li"><div class="ld" style="background:rgba(220,38,38,.8);height:2px;width:18px;border-radius:1px;"></div>Coût installation</div>
         </div>
         <div class="roi-chart-wrap" style="margin-top:.75rem;">
@@ -587,9 +623,29 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
 var D16=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
 var gmap,locMk,roseMk,chartInst,acTimer,chosen=null;
 /* Simulator globals */
-var SIM_CP=0.3, SIM_A_UNIT=0.297, SIM_RHO=1.225, SIM_VMIN=2;
-var SIM_K=SIM_CP*0.5*SIM_RHO*SIM_A_UNIT;
-var simSpeeds=null, simMonths=null, simMonthlyAvg=null, simTotalYears=1;
+/* ── Constantes physiques Philéole ── */
+var PHY_RHO=1.225, PHY_A=0.297, PHY_CP=0.27;
+var PHY_K=0.5*PHY_RHO*PHY_A*PHY_CP;   /* = 0.04912 W/(m/s)³ par turbine */
+var PHY_MAX=450;                        /* W plafond par turbine */
+var PHY_CUT=2;                         /* m/s seuil de démarrage */
+var INSTALL_H=10;                      /* hauteur d'installation (m), défaut 10 */
+var EFF_FACTOR=0.80;                   /* coefficient de rendement global, hypothèse */
+var simMonthlyAvg=null, simTotalYears=1;
+var SIM_A_UNIT=PHY_A;                  /* compat surface */
+
+function calcPower(v){
+  if(!isFinite(v)||v<PHY_CUT)return 0;
+  return Math.min(PHY_K*v*v*v, PHY_MAX);
+}
+
+function interpHeight(v10,v100,h){
+  if(!isFinite(v10)||!isFinite(v100))return v10||0;
+  if(h<=10)return Math.max(0,v10);
+  if(h>=100)return Math.max(0,v100);
+  var w=Math.log(h/10)/Math.log(10); /* log(100/10)=log(10) */
+  if(v10>0&&v100>0)return Math.pow(v10,1-w)*Math.pow(v100,w);
+  return Math.max(0,v10+(v100-v10)*w);
+}
 
 function setSt(m){document.getElementById('st').textContent=m;}
 function d2s(d){return Math.round(((d%360)+360)%360/22.5)%16;}
@@ -669,7 +725,7 @@ async function runAnalysis(lat,lon,dn){
   gmap.setView([lat,lon],11,{animate:true});
   try{
     var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
-      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=UTC';
+      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_speed_10m,wind_speed_100m,wind_direction_10m&wind_speed_unit=ms&timezone=UTC&models=era5';
     var res=await fetch(url);
     if(!res.ok){setSt('Erreur Open-Meteo ('+res.status+') — réessayez dans quelques secondes.');return;}
     var meteo;
@@ -678,14 +734,15 @@ async function runAnalysis(lat,lon,dn){
     if(!meteo.hourly){setSt('Données manquantes. Réessayez.');return;}
     setSt('⌛ Calcul des statistiques…');
 
-    var sp=meteo.hourly.wind_speed_10m, di=meteo.hourly.wind_direction_10m, tm=meteo.hourly.time;
+    var sp=meteo.hourly.wind_speed_10m, sp100=meteo.hourly.wind_speed_100m||[], di=meteo.hourly.wind_direction_10m, tm=meteo.hourly.time;
     var vd=[];
     window.simHours=[];
     for(var i=0;i<sp.length;i++){
       if(sp[i]!==null&&di[i]!==null){
         var mo_=parseInt(tm[i].slice(5,7))-1;
+        var v100i=sp100[i]||sp[i]; /* fallback à v10 si 100m absent */
         vd.push({s:sp[i],d:di[i],m:mo_});
-        window.simHours.push({s:sp[i],m:mo_});
+        window.simHours.push({s:sp[i],s100:v100i,m:mo_});
       }
     }
 
@@ -727,7 +784,7 @@ async function runAnalysis(lat,lon,dn){
     var mo5avg=mo5.map(function(v){return parseFloat((v/years).toFixed(1));});
     var mo10avg=mo10.map(function(v){return parseFloat((v/years).toFixed(1));});
 
-    document.getElementById('lloc').textContent='📍 '+place+' — '+lat.toFixed(3)+', '+lon.toFixed(3)+' — ERA5 2019–2023 ('+Math.round(n/1000)+'k points)';
+    document.getElementById('lloc').textContent='📍 '+place+' — '+lat.toFixed(3)+', '+lon.toFixed(3)+' — ERA5 2019–2023 · models=era5 ('+Math.round(n/1000)+'k points)';
     document.getElementById('v0').textContent=avg.toFixed(1)+' m/s';
     document.getElementById('v1').textContent=mx.toFixed(1)+' m/s';
     document.getElementById('v2').textContent=D16[ds];
@@ -767,6 +824,7 @@ async function runAnalysis(lat,lon,dn){
     /* Init inputs and run first computation */
     var initT=parseInt(document.getElementById('inp-turbines').value)||6;
     updateDerived(initT);
+    onHeightChange(); /* recalcule avec hauteur courante */
     computeProduction(initT);
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
@@ -907,13 +965,34 @@ function drawMonthly(avg){
 var TURB_PER_STRUCT=6;
 var SIM_MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
-function getPmoy(){ return parseFloat(document.getElementById('inp-pmoy').value)||100; }
-var PHILEOLE_H=4000; /* heures/an hypothèse Philéole */
+/* ── Hauteur & rendement ── */
+function getHeight(){ return Math.min(100,Math.max(10,parseFloat(document.getElementById('inp-height').value)||10)); }
+function getEff(){ return Math.min(1,Math.max(0,(parseFloat(document.getElementById('inp-eff').value)||80)/100)); }
 
-function onPmoyChange(){
+function setHeight(h){
+  document.getElementById('inp-height').value=h;
+  INSTALL_H=h;
+  document.querySelectorAll('.h-btn').forEach(function(b){
+    b.classList.toggle('active',parseInt(b.textContent)===h);
+  });
+  onHeightChange();
+}
+
+function onHeightChange(){
+  INSTALL_H=getHeight();
+  var hlabel=INSTALL_H+' m';
+  document.getElementById('sk-height-label').textContent=hlabel;
+  var thH=document.getElementById('th-height');
+  if(thH) thH.textContent=hlabel;
+  document.getElementById('der-height').textContent='Vent interpolé ERA5 à '+INSTALL_H+' m (entre 10 m et 100 m)';
   var N=parseInt(document.getElementById('inp-turbines').value)||1;
-  var el=document.getElementById('der-pmoy-total');
-  if(el) el.textContent=(N*getPmoy()).toLocaleString('fr-FR')+' W';
+  if(window.simHours) computeProduction(N);
+}
+
+function onEffChange(){
+  EFF_FACTOR=getEff();
+  document.getElementById('sk-eff-label').textContent=Math.round(EFF_FACTOR*100)+'%';
+  var N=parseInt(document.getElementById('inp-turbines').value)||1;
   if(window.simHours) computeProduction(N);
 }
 
@@ -938,98 +1017,89 @@ function onStructChange(){
 function updateDerived(t){
   document.getElementById('der-turbines').innerHTML='Surface totale : <strong>'+(t*SIM_A_UNIT).toFixed(3)+' m²</strong>';
   document.getElementById('der-struct').innerHTML='= <strong>'+t+' turbines</strong>';
-
 }
 
 function fmt(v){
   if(v>=10)return v.toFixed(0);
   if(v>=1)return v.toFixed(1);
-  return (v*1000).toFixed(0)+' Wh';
+  return (v*1000).toFixed(1)+' Wh';
 }
 
 function computeProduction(N){
-  var pmoy=getPmoy();
-  var pmoyTotal=pmoy*N;
   if(!window.simHours)return;
   var hrs=window.simHours;
+  var h=INSTALL_H;
+  var eff=EFF_FACTOR;
 
-  /* ── Comptage heures et v³ par mois ── */
-  var monthH=Array(12).fill(0);
-  var monthV3=Array(12).fill(0);
-  var totalH=0, totalV3=0;
+  /* ── Méthode 2 : Simulation horaire ERA5 heure par heure ──
+     P = calcPower(interpHeight(v10,v100,h)) pour chaque heure */
+  var hourlyMonthWh=Array(12).fill(0);   /* Wh bruts par mois */
+  var monthH=Array(12).fill(0);          /* heures productives */
+  var monthSumVh=Array(12).fill(0);      /* somme vitesses à hauteur h */
+  var totalH=0, totalWh=0;
 
   for(var i=0;i<hrs.length;i++){
-    if(hrs[i].s<SIM_VMIN)continue;
-    var v3=hrs[i].s*hrs[i].s*hrs[i].s;
-    monthH[hrs[i].m]++;
-    monthV3[hrs[i].m]+=v3;
-    totalH++;
-    totalV3+=v3;
+    var v10=hrs[i].s, v100=hrs[i].s100||hrs[i].s;
+    var vh=interpHeight(v10,v100,h);
+    var m=hrs[i].m;
+    /* Heures productives = v à hauteur ≥ PHY_CUT */
+    if(vh>=PHY_CUT){
+      monthH[m]++;
+      monthSumVh[m]+=vh;
+      totalH++;
+    }
+    var p=calcPower(vh);
+    hourlyMonthWh[m]+=p;
+    totalWh+=p;
   }
 
-  var realAnnualH=totalH/simTotalYears;
+  var hourlyAnnualKwh=totalWh/simTotalYears*N/1000;
+  var hourlyMonthKwh=hourlyMonthWh.map(function(w){return w/simTotalYears*N/1000;});
+  var hourlyNetKwh=hourlyAnnualKwh*eff;
 
-  /* ── Total annuel ancré sur N × P_moy × heures_ERA5 / 1000 ──
-     Les deux méthodes donnent le même total annuel.
-     Seule la répartition mensuelle diffère selon la pondération. */
-  var annualKwh=pmoyTotal*realAnnualH/1000;
-
-  /* Référence v³ pour la méthode réelle ERA5 */
-  var v3AvgReal=totalH>0?totalV3/totalH:1;
-
-  /* Référence v³ pour la méthode vent moyen */
-  var v3AvgSimple=monthH.reduce(function(acc,h,m){
-    var vMoy=simMonthlyAvg[m]||0;
-    return acc+(vMoy*vMoy*vMoy)*(h/(totalH||1));
-  },0)||1;
-
-  /* ── Méthode vent moyen : distribution par (v_moy_mois)³ normalisée ── */
-  var avgMonthKwh=monthH.map(function(h,m){
-    if(h===0)return 0;
-    var vMoy=simMonthlyAvg[m]||0;
-    return pmoyTotal*((vMoy*vMoy*vMoy)/v3AvgSimple)*(h/simTotalYears)/1000;
+  /* ── Méthode 1 : Estimation simplifiée (vitesse mensuelle moyenne) ── */
+  var monthAvgVh=monthH.map(function(cnt,m){return cnt>0?monthSumVh[m]/cnt:0;});
+  var simpleMonthKwh=monthAvgVh.map(function(v,m){
+    var p=calcPower(v);
+    var hrs_m=monthH[m]/simTotalYears; /* heures productives du mois */
+    return p*hrs_m*N/1000;
   });
-  /* Total = annualKwh par construction (somme normalisée) */
-  var avgAnnualKwh=avgMonthKwh.reduce(function(a,b){return a+b;},0);
+  var simpleAnnualKwh=simpleMonthKwh.reduce(function(a,b){return a+b;},0);
+  var simpleNetKwh=simpleAnnualKwh*eff;
 
-  /* ── Méthode réelle ERA5 : distribution par E[v³] horaire normalisée ── */
-  var realMonthKwh=monthH.map(function(h,m){
-    if(h===0)return 0;
-    var v3moy=monthV3[m]/h;
-    return pmoyTotal*(v3moy/v3AvgReal)*(h/simTotalYears)/1000;
-  });
-  /* Total = annualKwh par construction */
-  var realAnnualKwh=realMonthKwh.reduce(function(a,b){return a+b;},0);
+  /* ── Écart entre les deux méthodes ── */
+  /* Les deux peuvent donner des totaux différents — ne pas normaliser */
+  var gainAnnual=simpleAnnualKwh>0?((hourlyAnnualKwh-simpleAnnualKwh)/simpleAnnualKwh*100):0;
 
   /* ── KPIs ── */
-  var perTurbine=annualKwh/N;
-  var perMur=perTurbine*18;
-  document.getElementById('sk-real').textContent=fmt(realAnnualKwh);
-  document.getElementById('sk-perturbine').textContent=fmt(perTurbine);
-  document.getElementById('sk-permur').textContent=fmt(perMur);
-  document.getElementById('sk-hours').textContent=Math.round(realAnnualH).toLocaleString('fr-FR');
+  document.getElementById('sk-real').textContent=fmt(hourlyAnnualKwh)+' (brut)';
+  document.getElementById('sk-net').textContent=fmt(hourlyNetKwh);
+  document.getElementById('sk-permur').textContent=fmt(hourlyAnnualKwh/N*18);
+  document.getElementById('sk-hours').textContent=Math.round(totalH/simTotalYears).toLocaleString('fr-FR');
 
-  lastRealKwh=realAnnualKwh;
-  lastAvgKwh=avgAnnualKwh;
+  lastRealKwh=hourlyNetKwh;   /* ROI utilise la production nette */
+  lastAvgKwh=simpleNetKwh;
 
   /* ── Tableau mensuel ── */
   var tbody=document.getElementById('prod-tbody');
   tbody.innerHTML='';
   for(var m=0;m<12;m++){
     var mH=Math.round(monthH[m]/simTotalYears);
-    var gain=avgMonthKwh[m]>0?((realMonthKwh[m]-avgMonthKwh[m])/avgMonthKwh[m]*100):0;
+    var vhAvg=monthAvgVh[m];
+    var gain=simpleMonthKwh[m]>0?((hourlyMonthKwh[m]-simpleMonthKwh[m])/simpleMonthKwh[m]*100):0;
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="td-month">'+SIM_MONTHS[m]+'</td>'
       +'<td class="td-avg">'+mH+'</td>'
-      +'<td class="td-avg">'+fmt(avgMonthKwh[m])+'</td>'
-      +'<td class="td-real">'+fmt(realMonthKwh[m])+'</td>'
+      +'<td class="td-avg">'+vhAvg.toFixed(1)+'</td>'
+      +'<td class="td-avg">'+fmt(simpleMonthKwh[m])+'</td>'
+      +'<td class="td-real">'+fmt(hourlyMonthKwh[m])+'</td>'
       +'<td class="td-bonus">'+(gain>=0?'+':'')+gain.toFixed(1)+'%</td>';
     tbody.appendChild(tr);
   }
-  var gainAnnual=avgAnnualKwh>0?((realAnnualKwh-avgAnnualKwh)/avgAnnualKwh*100):0;
-  document.getElementById('ft-avg').textContent=Math.round(realAnnualH)+' h';
-  document.getElementById('ft-avg2').textContent=fmt(avgAnnualKwh);
-  document.getElementById('ft-real').textContent=fmt(realAnnualKwh);
+  document.getElementById('ft-avg').textContent=Math.round(totalH/simTotalYears)+' h';
+  document.getElementById('ft-avg2').textContent='—';
+  document.getElementById('ft-simple').textContent=fmt(simpleAnnualKwh);
+  document.getElementById('ft-real').textContent=fmt(hourlyAnnualKwh);
   document.getElementById('ft-bonus').textContent=(gainAnnual>=0?'+':'')+gainAnnual.toFixed(1)+'%';
 
   computeROI();
@@ -1093,14 +1163,14 @@ function drawROI(cost,ecoAvg,ecoReal){
       labels:years,
       datasets:[
         {
-          label:'Économies · vent moyen',
+          label:'Économies · estimation simplifiée',
           data:cumAvg,
           borderColor:'rgba(100,116,139,.75)',
           backgroundColor:'rgba(100,116,139,.07)',
           borderWidth:2,fill:true,tension:.3,pointRadius:0,pointHoverRadius:4
         },
         {
-          label:'Économies · ERA5 réel',
+          label:'Économies · simulation horaire',
           data:cumReal,
           borderColor:'rgba(26,95,168,.85)',
           backgroundColor:'rgba(26,95,168,.08)',
@@ -1138,6 +1208,7 @@ function drawROI(cost,ecoAvg,ecoReal){
 
 /* Boot */
 ainp.value='';
+setHeight(10); /* init boutons hauteur */
 </script>
 </body>
 </html>
