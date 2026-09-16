@@ -408,6 +408,27 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
     <div><div class="pot-head" id="pot-head">—</div><div class="pot-body" id="pot-body"></div></div>
   </div>
 
+  <!-- Section 1 : indicateurs vent ────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.875rem;">
+
+    <!-- Typology (shown when gust data loaded) -->
+    <div id="s1-typology-card" style="display:none;background:var(--card);border-radius:var(--r-md);border:1.5px solid var(--border);padding:1rem;">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">Typologie du vent</div>
+      <div style="font-size:17px;font-weight:800;color:var(--text);" id="s1-wind-type">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:.25rem;">Ratio médian rafale/vent : <strong id="s1-gust-ratio">—</strong></div>
+      <div style="font-size:11px;color:var(--blue);margin-top:.25rem;">Bonus de production : <strong id="s1-gust-bonus">—</strong></div>
+    </div>
+
+    <!-- Secteur optimal (shown after ERA5 analysis) -->
+    <div id="s1-sector-card" style="display:none;background:var(--card);border-radius:var(--r-md);border:1.5px solid var(--border);padding:1rem;">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">Secteur de vent optimal</div>
+      <div style="font-size:17px;font-weight:800;color:var(--text);"><span id="s1-fav-pct">—</span>%<span style="font-size:12px;font-weight:400;color:var(--muted);"> du temps</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:.25rem;">≈ <strong id="s1-fav-h">—</strong> h/an en secteur ±45°</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:.25rem;">Autour du vent dominant · heures v ≥ 2 m/s</div>
+    </div>
+
+  </div>
+
   <!-- ── Simulator ─────────────────────────────────────────── -->
   <div class="sim-section" id="sim">
     <div class="sim-header">
@@ -906,7 +927,7 @@ async function runAnalysis(lat,lon,dn){
     var sp=meteo.hourly.wind_speed_10m, sp100=meteo.hourly.wind_speed_100m||[], di=meteo.hourly.wind_direction_10m, tm=meteo.hourly.time;
     var vd=[];
     window.simHours=[];
-    window.simHoursRaw={}; /* index brut → {s} pour alignement rafales */
+    window.simHoursRaw=[]; /* tableau brut → {s} pour alignement rafales */
     for(var i=0;i<sp.length;i++){
       if(sp[i]!==null&&di[i]!==null){
         var mo_=parseInt(tm[i].slice(5,7))-1;
@@ -927,6 +948,18 @@ async function runAnalysis(lat,lon,dn){
     vd.forEach(function(x){var s=d2s(x.d);scts[s]++;ssps[s]+=x.s;});
     var ds=scts.indexOf(Math.max.apply(null,scts));
     window.simDomDir=ds*22.5; /* direction dominante en degrés */
+    /* Secteur favorable ±45° — calculé sur heures productives v≥2 */
+    var domDeg=ds*22.5;
+    var favSecH=0, totalProdH=0;
+    vd.forEach(function(x){
+      if(x.s<2)return;
+      totalProdH++;
+      var diff=Math.abs(((x.d-domDeg)+360)%360);
+      if(diff>180)diff=360-diff;
+      if(diff<=45)favSecH++;
+    });
+    window.simFavPct=totalProdH>0?(favSecH/totalProdH*100):0;
+    window.simFavH=favSecH/simTotalYears; /* h/an */
 
     var mo=Array(12).fill(null).map(function(){return{s:0,n:0};});
     vd.forEach(function(x){mo[x.m].s+=x.s;mo[x.m].n++;});
@@ -1000,7 +1033,17 @@ async function runAnalysis(lat,lon,dn){
     document.getElementById('roi-section').style.display='block';
     document.getElementById('mur-section').style.display='none';
     document.getElementById('gust-section').style.display='none';
+    document.getElementById('s1-typology-card').style.display='none';
     window.simGusts=null; gustMedianRatio=null; gustBonusCoeff=1.0;
+    /* Afficher secteur optimal section 1 */
+    var s1sec=document.getElementById('s1-sector-card');
+    var s1pct=document.getElementById('s1-fav-pct');
+    var s1h=document.getElementById('s1-fav-h');
+    if(s1sec&&window.simFavPct!==undefined){
+      if(s1pct)s1pct.textContent=window.simFavPct.toFixed(0);
+      if(s1h)s1h.textContent=Math.round(window.simFavH).toLocaleString('fr-FR');
+      s1sec.style.display='block';
+    }
     /* Rafales : fetch en arrière-plan, non bloquant */
     fetchGustData(lat,lon);
 
@@ -1029,7 +1072,7 @@ function updateMap(lat,lon,scts,ssps,total,avg,domDir,place){
 
   var sz=320,oc=document.createElement('canvas');
   oc.width=sz;oc.height=sz;
-  drawRose(oc,scts,ssps,total);
+  drawRose(oc,scts,ssps,total,ds); /* pass ds for ±45° arc */
 
   roseMk=L.marker([lat,lon],{
     icon:L.divIcon({
@@ -1040,9 +1083,27 @@ function updateMap(lat,lon,scts,ssps,total,avg,domDir,place){
   }).addTo(gmap);
 }
 
-function drawRose(cv,counts,sums,total){
+function drawRose(cv,counts,sums,total,domSec){
   var ctx=cv.getContext('2d'),W=cv.width,H=cv.height,cx=W/2,cy=H/2,maxR=Math.min(cx,cy)-24;
   ctx.clearRect(0,0,W,H);
+
+  /* ── Arc ±45° autour de la direction dominante ── */
+  if(domSec!==undefined){
+    var domRad=(domSec*22.5-90)*Math.PI/180;
+    var halfArc=45*Math.PI/180;
+    ctx.save();
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,maxR,domRad-halfArc,domRad+halfArc);
+    ctx.closePath();
+    ctx.fillStyle='rgba(26,95,168,0.10)';ctx.fill();
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,maxR,domRad-halfArc,domRad+halfArc);
+    ctx.closePath();
+    ctx.strokeStyle='rgba(26,95,168,0.40)';ctx.lineWidth=1.5;
+    ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   var mf=Math.max.apply(null,counts)/total;
 
   /* Grid circles */
@@ -1535,7 +1596,7 @@ async function fetchGustData(lat,lon){
     /* Stocker pour calcul */
     window.simGusts=gusts;
     computeGustTypology();
-  }catch(e){ /* non bloquant */ }
+  }catch(e){ console.error('Erreur données rafales:',e); }
 }
 
 function computeGustTypology(){
@@ -1576,14 +1637,24 @@ function computeGustTypology(){
   var med=ratios[Math.floor(ratios.length/2)];
   gustMedianRatio=med;
   /* Classification */
-  var cls=GUST_CLASSES.find(function(c){return med<c.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
+  var cls=GUST_CLASSES.find(function(cc){return med<cc.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
   gustBonusCoeff=cls.bonus;
-  /* Affichage typology */
+  /* Affichage typology section ROI */
   document.getElementById('gust-icon').textContent=cls.icon;
   document.getElementById('gust-label').textContent=cls.icon+' '+cls.label;
   document.getElementById('gust-ratio').textContent=med.toFixed(2);
   document.getElementById('gust-bonus-label').textContent='+'+Math.round((cls.bonus-1)*100)+'% (×'+cls.bonus.toFixed(2)+')';
-  /* Calculer et afficher ROI avec bonus */
+  /* Affichage typology section 1 */
+  var s1typ=document.getElementById('s1-wind-type');
+  var s1rat=document.getElementById('s1-gust-ratio');
+  var s1bon=document.getElementById('s1-gust-bonus');
+  var s1card=document.getElementById('s1-typology-card');
+  if(s1typ) s1typ.textContent=cls.icon+' '+cls.label;
+  if(s1rat) s1rat.textContent=med.toFixed(2);
+  if(s1bon) s1bon.textContent='+'+Math.round((cls.bonus-1)*100)+'%';
+  if(s1card) s1card.style.display='block';
+  /* IMPORTANT : recalculer la production avec le nouveau coefficient */
+  if(window.simHours) computeProduction(getNTurbines());
   updateGustROI();
   document.getElementById('gust-section').style.display='block';
 }
