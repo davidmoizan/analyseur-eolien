@@ -1049,7 +1049,7 @@ async function runAnalysis(lat,lon,dn){
 
 
 
-    updateMap(lat,lon,scts,ssps,n,avg,D16[ds],place);
+    updateMap(lat,lon,scts,ssps,n,avg,D16[ds],place,ds);
     drawMonthly(ma);
     drawDays(mo5avg,mo10avg);
     document.getElementById('panel').style.display='block';
@@ -1057,7 +1057,7 @@ async function runAnalysis(lat,lon,dn){
   }catch(e){setSt('Erreur : '+e.message);console.error(e);}
 }
 
-function updateMap(lat,lon,scts,ssps,total,avg,domDir,place){
+function updateMap(lat,lon,scts,ssps,total,avg,domDir,place,ds){
   if(locMk)gmap.removeLayer(locMk);
   if(roseMk)gmap.removeLayer(roseMk);
 
