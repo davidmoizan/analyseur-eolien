@@ -1443,7 +1443,7 @@ function roiLabel(years){
 function computeROI(){
   var priceUnit=parseFloat(document.getElementById('roi-price').value)||1000;
   var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.22;
-  var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  var N=getNTurbines();
 
   var cost=N*priceUnit;
   var ecoAvg=lastAvgKwh*priceKwh;
@@ -1592,7 +1592,7 @@ function updateGustROI(){
   if(lastRealKwh===0)return;
   var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.22;
   var priceUnit=parseFloat(document.getElementById('roi-price').value)||1000;
-  var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  var N=getNTurbines();
   var cost=N*priceUnit;
   /* Production nette de référence */
   var refKwh=window.lastNetRef||lastRealKwh; /* nette sans bonus */
