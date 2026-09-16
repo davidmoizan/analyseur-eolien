@@ -449,13 +449,13 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
           <div class="sim-derived" id="der-height">Interpolation log ERA5 entre 10 m et 100 m</div>
         </div>
         <div class="sim-input-block" style="background:var(--blue-light);border:1px solid rgba(26,95,168,.2);">
-          <div class="sim-input-label" style="color:var(--blue);">⚙️ Paramètres physiques Philéole</div>
+          <div class="sim-input-label" style="color:var(--blue);">⚡ Courbe de puissance Philéole</div>
           <div style="font-size:12px;color:var(--text);line-height:1.8;margin-top:.375rem;">
-            <div><strong>CP</strong> = 0,27 · <strong>A</strong> = 0,297 m²</div>
-            <div><strong>Démarrage</strong> ≥ 2 m/s · <strong>Max</strong> = 450 W/turbine</div>
-            <div><strong>P(v)</strong> = min(450 ; 0,04912 × v³)</div>
+            <div><strong>Démarrage</strong> ≥ 2 m/s · <strong>Max courbe</strong> = 793,75 W</div>
+            <div><strong>Interpolation</strong> linéaire entre les 21 points</div>
+            <div style="font-size:10px;color:var(--amber);margin-top:3px;">⚠️ Au-delà de 20 m/s : 793,75 W utilisé provisoirement</div>
           </div>
-          <div style="font-size:10px;color:var(--muted);margin-top:.5rem;font-style:italic;">Estimation théorique provisoire — courbe mesurée à venir</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:.5rem;font-style:italic;">Données fournies par Philéole — à mettre à jour si courbe révisée</div>
         </div>
       </div>
 
@@ -463,7 +463,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       <div class="sim-kpis">
         <div class="sk" style="--sk-color:var(--blue)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Production brute — sim. horaire</div>
+          <div class="sk-lbl">Production attendue — courbe Philéole</div>
           <div class="sk-val" id="sk-real">—</div>
           <div class="sk-unit">kWh / an</div>
         </div>
@@ -526,10 +526,10 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
       </div>
 
       <div class="sim-note">
-        <strong>⚠️ Estimation théorique provisoire</strong> en l'absence de courbe de puissance mesurée Philéole.
+        <strong>Production calculée à partir de la courbe de puissance attendue fournie par Philéole</strong> et des vitesses de vent ERA5. Une interpolation linéaire est réalisée entre les points de la courbe.
         <strong>Estimation simplifiée</strong> : P(v_moy_mensuelle) × heures — ignore la variabilité intra-mensuelle.
-        <strong>Simulation horaire</strong> : Σ P(v_h à hauteur H) heure par heure sur 2019–2023 — les deux méthodes peuvent donner des totaux différents.
-        Formule : P = min(450 W ; 0,04912 × v³). La simulation ne prend pas encore en compte les interactions aérodynamiques entre les éoliennes d'une même structure.
+        <strong>Simulation horaire</strong> : Σ P_courbe(v_h à hauteur H) heure par heure sur 2019–2023 — les deux méthodes peuvent donner des totaux différents.
+        ⚠️ Au-delà de 20 m/s, 793,75 W/turbine est utilisé provisoirement (vitesse de coupure à confirmer par Philéole). La simulation ne prend pas encore en compte les interactions aérodynamiques entre éoliennes.
       </div>
 
     </div>
@@ -593,7 +593,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
         </div>
         <div class="roi-badge real-b">
           <div class="roi-badge-icon">⚡</div>
-          <div class="roi-badge-label">Temps de retour · simulation horaire</div>
+          <div class="roi-badge-label">Temps de retour · courbe Philéole</div>
           <div class="roi-badge-val" id="rb-real">—</div>
           <div class="roi-badge-sub" id="rb-real-sub"></div>
         </div>
@@ -604,7 +604,7 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
         <div class="sec-lbl" style="margin-bottom:.5rem;">Courbe de remboursement cumulé sur 20 ans</div>
         <div class="roi-legend">
           <div class="li"><div class="ld" style="background:rgba(100,116,139,.75)"></div>Économies · estimation simplifiée</div>
-          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies · simulation horaire</div>
+          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies · courbe Philéole (simulation horaire)</div>
           <div class="li"><div class="ld" style="background:rgba(220,38,38,.8);height:2px;width:18px;border-radius:1px;"></div>Coût installation</div>
         </div>
         <div class="roi-chart-wrap" style="margin-top:.75rem;">
@@ -623,20 +623,41 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
 var D16=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
 var gmap,locMk,roseMk,chartInst,acTimer,chosen=null;
 /* Simulator globals */
-/* ── Constantes physiques Philéole ── */
-var PHY_RHO=1.225, PHY_A=0.297, PHY_CP=0.27;
-var PHY_K=0.5*PHY_RHO*PHY_A*PHY_CP;   /* = 0.04912 W/(m/s)³ par turbine */
-var PHY_MAX=450;                        /* W plafond par turbine */
-var PHY_CUT=2;                         /* m/s seuil de démarrage */
-var INSTALL_H=10;                      /* hauteur d'installation (m), défaut 10 */
-var EFF_FACTOR=0.80;                   /* coefficient de rendement global, hypothèse */
+/* ── Courbe de puissance Philéole ──────────────────────────────
+   Source : données fournies par Philéole. Facilement remplaçable.
+   Au-delà de 20 m/s : valeur provisoire (793,75 W) — vitesse de coupure à confirmer.
+────────────────────────────────────────────────────────────── */
+var POWER_CURVE=[
+  [0,0],[1,0.1],[2,0.75],[3,2.75],[4,6.25],
+  [5,12.5],[6,21.5],[7,34],[8,50.75],[9,72.25],
+  [10,99.25],[11,132],[12,171.5],[13,218],[14,272.25],
+  [15,335],[16,406.5],[17,487.5],[18,578.75],[19,680.5],
+  [20,793.75]
+];
+var CURVE_MAX_POWER=793.75; /* W provisoire au-delà de 20 m/s */
+var PHY_CUT=2;              /* m/s seuil de démarrage */
+var PHY_A=0.297;            /* m² surface — référence */
+var INSTALL_H=10;           /* hauteur d'installation (m), défaut 10 */
+var EFF_FACTOR=0.80;        /* coefficient de rendement global, hypothèse */
 var simMonthlyAvg=null, simTotalYears=1;
-var SIM_A_UNIT=PHY_A;                  /* compat surface */
+var SIM_A_UNIT=PHY_A;
 
-function calcPower(v){
+/* Lookup dans la courbe Philéole avec interpolation linéaire */
+function lookupPower(v){
   if(!isFinite(v)||v<PHY_CUT)return 0;
-  return Math.min(PHY_K*v*v*v, PHY_MAX);
+  if(v>=20)return CURVE_MAX_POWER; /* provisoire — vitesse de coupure à confirmer */
+  for(var i=0;i<POWER_CURVE.length-1;i++){
+    var v0=POWER_CURVE[i][0], p0=POWER_CURVE[i][1];
+    var v1=POWER_CURVE[i+1][0], p1=POWER_CURVE[i+1][1];
+    if(v>=v0&&v<=v1){
+      var t=(v-v0)/(v1-v0);
+      return p0+t*(p1-p0);
+    }
+  }
+  return 0;
 }
+/* Alias pour compatibilité avec le reste du code */
+function calcPower(v){ return lookupPower(v); }
 
 function interpHeight(v10,v100,h){
   if(!isFinite(v10)||!isFinite(v100))return v10||0;
@@ -1170,7 +1191,7 @@ function drawROI(cost,ecoAvg,ecoReal){
           borderWidth:2,fill:true,tension:.3,pointRadius:0,pointHoverRadius:4
         },
         {
-          label:'Économies · simulation horaire',
+          label:'Économies · courbe Philéole (simulation horaire)',
           data:cumReal,
           borderColor:'rgba(26,95,168,.85)',
           backgroundColor:'rgba(26,95,168,.08)',
