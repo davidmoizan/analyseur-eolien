@@ -651,6 +651,47 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
           <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies · courbe Philéole (simulation horaire)</div>
           <div class="li"><div class="ld" style="background:rgba(220,38,38,.8);height:2px;width:18px;border-radius:1px;"></div>Coût installation</div>
         </div>
+
+      <!-- Bonus rafales -->
+      <div id="gust-section" style="display:none;margin-top:1.5rem;">
+        <div style="border-top:1.5px solid var(--border);padding-top:1.25rem;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
+            <div id="gust-icon" style="font-size:24px;">💨</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);" id="gust-label">—</div>
+              <div style="font-size:11px;color:var(--muted);">Ratio médian rafale/vent moyen ERA5 : <strong id="gust-ratio">—</strong> · Bonus : <strong id="gust-bonus-label">—</strong></div>
+            </div>
+          </div>
+          <!-- Scénario avec bonus — MIS EN AVANT -->
+          <div style="background:linear-gradient(135deg,#0b2340,#1a5fa8);border-radius:var(--r-md);padding:1.25rem;margin-bottom:.75rem;">
+            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">⚡ Production estimée avec prise en compte des rafales</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">
+              <div>
+                <div style="font-size:24px;font-weight:800;color:#fff;" id="gust-prod">—</div>
+                <div style="font-size:10px;color:rgba(255,255,255,.5);">kWh / an</div>
+              </div>
+              <div>
+                <div style="font-size:24px;font-weight:800;color:#60d4a0;" id="gust-eco">—</div>
+                <div style="font-size:10px;color:rgba(255,255,255,.5);">€ / an économisés</div>
+              </div>
+              <div>
+                <div style="font-size:24px;font-weight:800;color:#fbbf24;" id="gust-roi">—</div>
+                <div style="font-size:10px;color:rgba(255,255,255,.5);">temps de retour</div>
+              </div>
+            </div>
+          </div>
+          <!-- Référence — secondaire -->
+          <div style="background:var(--bg);border-radius:var(--r-md);padding:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:2px;">📊 Estimation de référence — hors bonus rafales</div>
+            <div><div style="font-size:16px;font-weight:700;color:var(--text);" id="gust-ref-prod">—</div><div style="font-size:10px;color:var(--muted);">kWh / an</div></div>
+            <div><div style="font-size:16px;font-weight:700;color:var(--text);" id="gust-ref-eco">—</div><div style="font-size:10px;color:var(--muted);">€ / an</div></div>
+            <div><div style="font-size:16px;font-weight:700;color:var(--text);" id="gust-ref-roi">—</div><div style="font-size:10px;color:var(--muted);">temps de retour</div></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:.875rem;font-style:italic;line-height:1.5;">
+            Cette simulation propose une estimation haute intégrant l'effet potentiel des rafales observées dans les données ERA5. La production réelle dépend également de la hauteur, des obstacles, du bâtiment et des conditions locales. Une étude sur site est recommandée avant investissement.
+          </div>
+        </div>
+      </div>
         <div class="roi-chart-wrap" style="margin-top:.75rem;">
           <canvas id="roich" role="img" aria-label="Courbe de retour sur investissement">Chargement.</canvas>
         </div>
@@ -688,6 +729,17 @@ var MUR_GAIN_STRUCT=1.17;     /* gain organisation des éoliennes entre elles */
 var MUR_GAIN_DEFECT=1.15;     /* gain déflecteurs haut/bas */
 var MUR_GAIN_FAVORABLE=MUR_GAIN_STRUCT*MUR_GAIN_DEFECT; /* = 1.3455 */
 var MUR_FAVORABLE_ANGLE=45;   /* ±45° autour de la direction dominante */
+/* ── Bonus de rafales ─────────────────────────────────────────────
+   Classification basée sur le ratio médian gust/mean ERA5.
+   Seuils et coefficients facilement modifiables. */
+var GUST_CLASSES=[
+  {maxRatio:1.30,label:'Vent régulier',      bonus:1.10,icon:'🌤️'},
+  {maxRatio:1.50,label:'Vent modérément variable',bonus:1.25,icon:'🌬️'},
+  {maxRatio:1.70,label:'Vent variable',      bonus:1.40,icon:'💨'},
+  {maxRatio:999, label:'Vent très rafaleux', bonus:1.60,icon:'🌪️'}
+];
+var gustBonusCoeff=1.0;   /* mis à jour par computeGustTypology() */
+var gustMedianRatio=null; /* ratio médian calculé */
 var simMonthlyAvg=null, simTotalYears=1;
 var SIM_A_UNIT=PHY_A;
 
@@ -807,12 +859,14 @@ async function runAnalysis(lat,lon,dn){
     var sp=meteo.hourly.wind_speed_10m, sp100=meteo.hourly.wind_speed_100m||[], di=meteo.hourly.wind_direction_10m, tm=meteo.hourly.time;
     var vd=[];
     window.simHours=[];
+    window.simHoursRaw={}; /* index brut → {s} pour alignement rafales */
     for(var i=0;i<sp.length;i++){
       if(sp[i]!==null&&di[i]!==null){
         var mo_=parseInt(tm[i].slice(5,7))-1;
         var v100i=sp100[i]||sp[i]; /* fallback à v10 si 100m absent */
         vd.push({s:sp[i],d:di[i],m:mo_});
         window.simHours.push({s:sp[i],s100:v100i,d:di[i],m:mo_});
+        if(sp[i]!==null) window.simHoursRaw[i]={s:sp[i]};
       }
     }
 
@@ -900,6 +954,10 @@ async function runAnalysis(lat,lon,dn){
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
     document.getElementById('mur-section').style.display='none';
+    document.getElementById('gust-section').style.display='none';
+    window.simGusts=null; gustMedianRatio=null; gustBonusCoeff=1.0;
+    /* Rafales : fetch en arrière-plan, non bloquant */
+    fetchGustData(lat,lon);
 
 
 
@@ -1229,7 +1287,7 @@ function computeMurGains(){
 var roiChartInst=null;
 var lastRealKwh=0, lastAvgKwh=0;
 
-function onRoiChange(){ computeROI(); }
+function onRoiChange(){ computeROI(); if(window.simGusts&&gustMedianRatio) updateGustROI(); }
 
 function fmtEur(v){
   if(v>=1000000) return (v/1000000).toFixed(2)+' M€';
@@ -1325,6 +1383,96 @@ function drawROI(cost,ecoAvg,ecoReal){
   });
 }
 
+
+
+/* ── Bonus de rafales ────────────────────────────────────────── */
+async function fetchGustData(lat,lon){
+  try{
+    var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
+      +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_gusts_10m&wind_speed_unit=ms&timezone=UTC&models=era5';
+    var res=await fetch(url);
+    if(!res.ok)return;
+    var data=await res.json();
+    var gusts=(data.hourly&&data.hourly.wind_gusts_10m)||[];
+    /* Stocker pour calcul */
+    window.simGusts=gusts;
+    computeGustTypology();
+  }catch(e){ /* non bloquant */ }
+}
+
+function computeGustTypology(){
+  if(!window.simHours||!window.simGusts)return;
+  var hrs=window.simHours, gusts=window.simGusts;
+  /* Reconstituer les ratios gust/mean pour heures productives */
+  /* simHours est filtré (v≥2), gusts est le tableau brut complet.
+     On reconstruit l'index brut à partir de la longueur ERA5 = 5×8760 */
+  var ratios=[];
+  /* Parcourir les données brutes — simHours ne garde pas l'index brut */
+  /* On reconstruit : pour chaque heure brute où sp≥2, calculer ratio */
+  /* Note : simHours stocke s (vitesse) mais pas l'index. On utilise gusts.length */
+  /* Solution : on itère sur gusts et utilise simHours comme référence de vitesse */
+  /* Plus simple : recalculer depuis les données brutes — mais on n'a pas sp brut */
+  /* Fallback propre : calculer ratio sur simHours dont on a la vitesse */
+  /* gust index i correspond à simHours hour si les deux tableaux sont alignés — */
+  /* ils ne le sont pas (simHours filtre les null). On utilise une heuristique : */
+  /* ratio médian approximé sur simHours avec gust[i_brut] */
+  /* Pour garantir l'alignement, on refait un scan sur window.simHoursRaw si dispo */
+  if(window.simHoursRaw){
+    window.simHoursRaw.forEach(function(h,i){
+      if(!h||h.s<2)return;
+      var g=gusts[i];
+      if(g==null||g<=0)return;
+      ratios.push(g/h.s);
+    });
+  } else {
+    /* Fallback : ratio sur simHours avec gusts alignés par position */
+    hrs.forEach(function(h,i){
+      var g=gusts[i];
+      if(g==null||g<=0)return;
+      ratios.push(g/h.s);
+    });
+  }
+  if(ratios.length===0)return;
+  /* Médiane */
+  ratios.sort(function(a,b){return a-b;});
+  var med=ratios[Math.floor(ratios.length/2)];
+  gustMedianRatio=med;
+  /* Classification */
+  var cls=GUST_CLASSES.find(function(c){return med<c.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
+  gustBonusCoeff=cls.bonus;
+  /* Affichage typology */
+  document.getElementById('gust-icon').textContent=cls.icon;
+  document.getElementById('gust-label').textContent=cls.icon+' '+cls.label;
+  document.getElementById('gust-ratio').textContent=med.toFixed(2);
+  document.getElementById('gust-bonus-label').textContent='+'+Math.round((cls.bonus-1)*100)+'% (×'+cls.bonus.toFixed(2)+')';
+  /* Calculer et afficher ROI avec bonus */
+  updateGustROI();
+  document.getElementById('gust-section').style.display='block';
+}
+
+function updateGustROI(){
+  if(lastRealKwh===0)return;
+  var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.22;
+  var priceUnit=parseFloat(document.getElementById('roi-price').value)||1000;
+  var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  var cost=N*priceUnit;
+  /* Production nette de référence */
+  var refKwh=lastRealKwh;
+  var refEco=refKwh*priceKwh;
+  var refTR=refEco>0?cost/refEco:null;
+  /* Production avec bonus rafales */
+  var bonusKwh=refKwh*gustBonusCoeff;
+  var bonusEco=bonusKwh*priceKwh;
+  var bonusTR=bonusEco>0?cost/bonusEco:null;
+  /* Affichage bonus (primaire) */
+  document.getElementById('gust-prod').textContent=Math.round(bonusKwh).toLocaleString('fr-FR')+' kWh';
+  document.getElementById('gust-eco').textContent=Math.round(bonusEco).toLocaleString('fr-FR')+' €';
+  document.getElementById('gust-roi').textContent=bonusTR?roiLabel(bonusTR):'—';
+  /* Affichage référence (secondaire) */
+  document.getElementById('gust-ref-prod').textContent=Math.round(refKwh).toLocaleString('fr-FR')+' kWh';
+  document.getElementById('gust-ref-eco').textContent=Math.round(refEco).toLocaleString('fr-FR')+' €';
+  document.getElementById('gust-ref-roi').textContent=refTR?roiLabel(refTR):'—';
+}
 
 /* Boot */
 ainp.value='';
