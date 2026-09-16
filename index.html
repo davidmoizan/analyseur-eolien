@@ -253,6 +253,13 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
   transition:background .12s,color .12s;
 }
 .h-btn:hover,.h-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.cfg-btn{
+  padding:.75rem .5rem;border:2px solid var(--border-med);border-radius:var(--r-md);
+  background:var(--card);color:var(--text);cursor:pointer;text-align:center;
+  transition:all .15s;width:100%;
+}
+.cfg-btn:hover{border-color:var(--blue);color:var(--blue);}
+.cfg-btn.active-cfg{border-color:var(--blue);background:var(--blue);color:#fff;}
 
 
 /* ── ROI ──────────────────────────────────────────────────── */
@@ -412,31 +419,44 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
     </div>
     <div class="sim-body">
 
-      <!-- Paramètres simulateur -->
-      <div class="sim-inputs">
+      <!-- Configurateur Philéole -->
+      <!-- Choix configuration -->
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.625rem;">Votre configuration Philéole</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.625rem;">
+          <button class="cfg-btn" id="cfg-turbine" onclick="setConfig('turbine')" style="border-color:var(--blue);background:var(--blue);color:#fff;">
+            <div style="font-size:20px;margin-bottom:4px;">🔧</div>
+            <div style="font-size:12px;font-weight:700;">Turbine</div>
+            <div style="font-size:10px;opacity:.8;">Unité individuelle</div>
+          </button>
+          <button class="cfg-btn" id="cfg-structure" onclick="setConfig('structure')">
+            <div style="font-size:20px;margin-bottom:4px;">🏗️</div>
+            <div style="font-size:12px;font-weight:700;">Structure</div>
+            <div style="font-size:10px;opacity:.7;">6 turbines</div>
+          </button>
+          <button class="cfg-btn" id="cfg-mur" onclick="setConfig('mur')">
+            <div style="font-size:20px;margin-bottom:4px;">🏭</div>
+            <div style="font-size:12px;font-weight:700;">Mur Philéole</div>
+            <div style="font-size:10px;opacity:.7;">18 turbines · gains inclus</div>
+          </button>
+        </div>
+      </div>
+      <!-- Quantité + hauteur -->
+      <div class="sim-inputs" style="grid-template-columns:1fr 1fr;">
         <div class="sim-input-block">
-          <div class="sim-input-label">Nombre d'éoliennes</div>
-          <div class="sim-input-sub">Saisir directement le nombre de turbines</div>
+          <div class="sim-input-label" id="cfg-qty-label">Nombre de turbines</div>
+          <div class="sim-input-sub" id="cfg-qty-sub">1 turbine sélectionnée</div>
           <div class="sim-input-row">
-            <input type="number" id="inp-turbines" class="sim-num" min="1" max="9999" value="6" oninput="onTurbinesChange()">
-            <span class="sim-num-unit">turbines</span>
+            <input type="number" id="inp-config-qty" class="sim-num" min="1" max="9999" value="1" oninput="onConfigQtyChange()">
+            <span class="sim-num-unit" id="cfg-unit-label">turbines</span>
           </div>
-          <div class="sim-derived" id="der-turbines">Surface totale : <strong>1,782 m²</strong></div>
+          <div class="sim-derived" id="der-turbines">= <strong>1 turbine</strong></div>
         </div>
         <div class="sim-input-block">
-          <div class="sim-input-label">Nombre de structures</div>
-          <div class="sim-input-sub">1 structure = 6 éoliennes</div>
-          <div class="sim-input-row">
-            <input type="number" id="inp-struct" class="sim-num" min="1" max="9999" value="1" oninput="onStructChange()">
-            <span class="sim-num-unit">structures</span>
-          </div>
-          <div class="sim-derived" id="der-struct">= <strong>6 turbines</strong></div>
-        </div>
-        <div class="sim-input-block">
-          <div class="sim-input-label">Hauteur d'installation</div>
-          <div class="sim-input-sub">Hauteur du centre du rotor au-dessus du sol</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.5rem;">
-            <button class="h-btn" onclick="setHeight(10)">10 m</button>
+          <div class="sim-input-label">Hauteur du centre du rotor</div>
+          <div class="sim-input-sub">Au-dessus du sol · interpolation ERA5 10–100 m</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:.5rem;">
+            <button class="h-btn active" onclick="setHeight(10)">10 m</button>
             <button class="h-btn" onclick="setHeight(20)">20 m</button>
             <button class="h-btn" onclick="setHeight(30)">30 m</button>
             <button class="h-btn" onclick="setHeight(50)">50 m</button>
@@ -446,55 +466,82 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
             <input type="number" id="inp-height" class="sim-num" min="10" max="100" value="10" oninput="onHeightChange()">
             <span class="sim-num-unit">m</span>
           </div>
-          <div class="sim-derived" id="der-height">Interpolation log ERA5 entre 10 m et 100 m</div>
+          <div class="sim-derived" id="der-height">Interpolation log ERA5 10–100 m</div>
         </div>
-        <div class="sim-input-block" style="background:var(--blue-light);border:1px solid rgba(26,95,168,.2);">
-          <div class="sim-input-label" style="color:var(--blue);">⚡ Courbe de puissance Philéole</div>
-          <div style="font-size:12px;color:var(--text);line-height:1.8;margin-top:.375rem;">
-            <div><strong>Démarrage</strong> ≥ 2 m/s · <strong>Max courbe</strong> = 793,75 W</div>
-            <div><strong>Interpolation</strong> linéaire entre les 21 points</div>
-            <div style="font-size:10px;color:var(--amber);margin-top:3px;">⚠️ Au-delà de 20 m/s : 793,75 W utilisé provisoirement</div>
-          </div>
-          <div style="font-size:10px;color:var(--muted);margin-top:.5rem;font-style:italic;">Données fournies par Philéole — à mettre à jour si courbe révisée</div>
+      </div>
+      <!-- Rendement -->
+      <div style="background:var(--bg);border-radius:var(--r-md);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);">Coefficient de rendement global</div>
+          <div style="font-size:11px;color:var(--amber);font-style:italic;">Hypothèse — à confirmer par Philéole</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <input type="number" id="inp-eff" class="sim-num" min="1" max="100" step="1" value="80" oninput="onEffChange()" style="width:65px;">
+          <span class="sim-num-unit">%</span>
         </div>
       </div>
 
-      <!-- KPIs -->
-      <div class="sim-kpis">
-        <div class="sk" style="--sk-color:var(--blue)">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Production attendue — courbe Philéole</div>
-          <div class="sk-val" id="sk-real">—</div>
-          <div class="sk-unit">kWh / an</div>
+      <!-- Chaîne de calcul production -->
+      <div id="prod-chain" style="display:none;background:var(--bg);border-radius:var(--r-md);padding:1rem;margin-bottom:1rem;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem;">⚙️ Décomposition du calcul</div>
+        <div style="display:flex;flex-direction:column;gap:.5rem;">
+          <!-- Étape 1 -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--card);border-radius:8px;border-left:3px solid var(--blue);">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);">Étape 1 · Production brute de référence</div>
+              <div style="font-size:10px;color:var(--muted);">Courbe Philéole × ERA5 heure/heure · <span id="sk-hours">—</span> h/an productives</div>
+            </div>
+            <div style="font-size:15px;font-weight:800;color:var(--blue);" id="sk-real">—</div>
+          </div>
+          <!-- Étape 2 : mur bonus (affiché si config mur) -->
+          <div id="chain-mur-row" style="display:none;display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--card);border-radius:8px;border-left:3px solid var(--teal);">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);">Étape 2 · Gains mur Philéole (organisation + déflecteurs)</div>
+              <div style="font-size:10px;color:var(--muted);">×1,3455 dans ±45° · <span id="chain-fav-pct">—</span>% du temps en secteur favorable</div>
+            </div>
+            <div style="font-size:15px;font-weight:800;color:var(--teal);" id="chain-mur-gain">—</div>
+          </div>
+          <!-- Étape 3 : rendement -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--card);border-radius:8px;border-left:3px solid var(--purple);">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);">Étape <span id="chain-step-eff">2</span> · Rendement global (<span id="sk-eff-label">80</span>%)</div>
+              <div style="font-size:10px;color:var(--muted);">Génératrice, câblage, disponibilité · modifiable</div>
+            </div>
+            <div style="font-size:15px;font-weight:800;color:var(--purple);" id="sk-net">—</div>
+          </div>
+          <!-- Étape 4 : bonus vent -->
+          <div id="chain-gust-row" style="display:none;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--card);border-radius:8px;border-left:3px solid var(--amber);">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);">Étape <span id="chain-step-gust">3</span> · Bonus <span id="chain-gust-type">—</span></div>
+              <div style="font-size:10px;color:var(--muted);">Ratio médian rafales/vent : <span id="gust-ratio-chain">—</span></div>
+            </div>
+            <div style="font-size:15px;font-weight:800;color:var(--amber);" id="chain-gust-bonus">—</div>
+          </div>
+          <!-- Total -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem 1rem;background:linear-gradient(135deg,var(--blue),#0d4a8a);border-radius:8px;margin-top:.25rem;">
+            <div style="font-size:13px;font-weight:700;color:#fff;">⚡ Production finale estimée</div>
+            <div style="font-size:20px;font-weight:800;color:#fff;" id="sk-finale">—</div>
+          </div>
+          <!-- Référence -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.375rem .75rem;">
+            <div style="font-size:11px;color:var(--muted);">Production nette de référence (sans bonus)</div>
+            <div style="font-size:12px;color:var(--muted);" id="sk-ref-only">—</div>
+          </div>
         </div>
-        <div class="sk" style="--sk-color:var(--teal)">
+      </div>
+      <!-- KPIs compacts -->
+      <div class="sim-kpis" style="margin-bottom:1rem;">
+        <div class="sk" style="--sk-color:var(--amber)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Production nette (×<span id="sk-eff-label">80%</span>)</div>
-          <div class="sk-val" id="sk-net">—</div>
-          <div class="sk-unit">kWh / an</div>
+          <div class="sk-lbl">Heures productives</div>
+          <div class="sk-val" id="sk-hours-kpi">—</div>
+          <div class="sk-unit">h/an · <span id="sk-height-label">10 m</span></div>
         </div>
         <div class="sk" style="--sk-color:var(--purple)">
           <div class="sk-accent"></div>
-          <div class="sk-lbl">Par mur (18 turbines) · brut</div>
+          <div class="sk-lbl">Par mur (18 turbines)</div>
           <div class="sk-val" id="sk-permur">—</div>
-          <div class="sk-unit">kWh / an / mur</div>
-        </div>
-        <div class="sk" style="--sk-color:var(--amber)">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Heures productives (v ≥ 2 m/s)</div>
-          <div class="sk-val" id="sk-hours">—</div>
-          <div class="sk-unit">h / an · hauteur <span id="sk-height-label">10 m</span></div>
-        </div>
-      </div>
-      <!-- Rendement global -->
-      <div style="background:var(--bg);border-radius:var(--r-md);padding:.75rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
-        <div style="flex:1;">
-          <div style="font-size:12px;font-weight:700;color:var(--text);">Coefficient de rendement global</div>
-          <div style="font-size:11px;color:var(--amber);font-style:italic;">Hypothèse provisoire — à confirmer par Philéole</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:.5rem;">
-          <input type="number" id="inp-eff" class="sim-num" min="1" max="100" step="1" value="80" oninput="onEffChange()" style="width:70px;">
-          <span class="sim-num-unit">% (génératrice, câblage, disponibilité…)</span>
+          <div class="sk-unit">kWh / an / mur · brut</div>
         </div>
       </div>
 
@@ -733,10 +780,10 @@ var MUR_FAVORABLE_ANGLE=45;   /* ±45° autour de la direction dominante */
    Classification basée sur le ratio médian gust/mean ERA5.
    Seuils et coefficients facilement modifiables. */
 var GUST_CLASSES=[
-  {maxRatio:1.30,label:'Vent régulier',      bonus:1.10,icon:'🌤️'},
-  {maxRatio:1.50,label:'Vent modérément variable',bonus:1.25,icon:'🌬️'},
-  {maxRatio:1.70,label:'Vent variable',      bonus:1.40,icon:'💨'},
-  {maxRatio:999, label:'Vent très rafaleux', bonus:1.60,icon:'🌪️'}
+  {maxRatio:1.30,label:'Vent stable',     bonus:1.10,icon:'🌤️',bLabel:'+10%'},
+  {maxRatio:1.50,label:'Vent fluctuant',  bonus:1.25,icon:'🌬️',bLabel:'+25%'},
+  {maxRatio:1.70,label:'Vent instable',   bonus:1.40,icon:'💨',bLabel:'+40%'},
+  {maxRatio:999, label:'Vent rafaleux',   bonus:1.60,icon:'🌪️',bLabel:'+60%'}
 ];
 var gustBonusCoeff=1.0;   /* mis à jour par computeGustTypology() */
 var gustMedianRatio=null; /* ratio médian calculé */
@@ -947,10 +994,8 @@ async function runAnalysis(lat,lon,dn){
     simSpeeds=sp; simMonths=vd.map(function(x){return x.m;}); simMonthlyAvg=ma;
     simTotalYears=Math.max(1,totalYears);
     /* Init inputs and run first computation */
-    var initT=parseInt(document.getElementById('inp-turbines').value)||6;
-    updateDerived(initT);
-    onHeightChange(); /* recalcule avec hauteur courante */
-    computeProduction(initT);
+    setConfig('turbine'); /* init configurateur */
+    onHeightChange();
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
     document.getElementById('mur-section').style.display='none';
@@ -1094,6 +1139,47 @@ function drawMonthly(avg){
 /* ── Simulator ───────────────────────────────────────────── */
 var TURB_PER_STRUCT=6;
 var SIM_MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+var CONFIG_TYPE='turbine'; /* 'turbine' | 'structure' | 'mur' */
+var CONFIG_QTY=1;
+
+/* ── Configuration : 3 boutons ── */
+function setConfig(type){
+  CONFIG_TYPE=type;
+  ['turbine','structure','mur'].forEach(function(t){
+    var btn=document.getElementById('cfg-'+t);
+    if(btn){ btn.style.background=t===type?'var(--blue)':'';
+             btn.style.color=t===type?'#fff':'';
+             btn.style.borderColor=t===type?'var(--blue)':''; }
+  });
+  var labels={turbine:['Nombre de turbines','turbines'],structure:['Nombre de structures','structures'],mur:['Nombre de murs Philéole','murs (18 turbines)']};
+  var L=labels[type];
+  document.getElementById('cfg-qty-label').textContent=L[0];
+  document.getElementById('cfg-unit-label').textContent=L[1];
+  /* Bonus mur chain step */
+  var hasMur=(type==='mur');
+  var chainMur=document.getElementById('chain-mur-row');
+  if(chainMur) chainMur.style.display=hasMur?'flex':'none';
+  onConfigQtyChange();
+}
+
+function getNTurbines(){
+  var qty=Math.max(1,parseInt(document.getElementById('inp-config-qty').value)||1);
+  if(CONFIG_TYPE==='structure') return qty*6;
+  if(CONFIG_TYPE==='mur') return qty*18;
+  return qty;
+}
+
+function onConfigQtyChange(){
+  CONFIG_QTY=Math.max(1,parseInt(document.getElementById('inp-config-qty').value)||1);
+  var N=getNTurbines();
+  var sub='';
+  if(CONFIG_TYPE==='structure') sub='= '+N+' turbines';
+  else if(CONFIG_TYPE==='mur') sub='= '+N+' turbines · '+(CONFIG_QTY*3)+' structures';
+  else sub='turbine'+(N>1?'s':'');
+  document.getElementById('cfg-qty-sub').textContent=sub||N+' turbine'+(N>1?'s':'');
+  document.getElementById('der-turbines').innerHTML='= <strong>'+N+' turbine'+(N>1?'s':'')+'</strong>';
+  if(window.simHours) computeProduction(N);
+}
 
 /* ── Hauteur & rendement ── */
 function getHeight(){ return Math.min(100,Math.max(10,parseFloat(document.getElementById('inp-height').value)||10)); }
@@ -1111,42 +1197,28 @@ function setHeight(h){
 function onHeightChange(){
   INSTALL_H=getHeight();
   var hlabel=INSTALL_H+' m';
-  document.getElementById('sk-height-label').textContent=hlabel;
+  ['sk-height-label','sk-height-label'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.textContent=hlabel;
+  });
   var thH=document.getElementById('th-height');
-  if(thH) thH.textContent=hlabel;
-  document.getElementById('der-height').textContent='Vent interpolé ERA5 à '+INSTALL_H+' m (entre 10 m et 100 m)';
-  var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  if(thH)thH.textContent=hlabel;
+  document.getElementById('der-height').textContent='Vent interpolé ERA5 à '+INSTALL_H+' m';
+  var N=getNTurbines();
   if(window.simHours) computeProduction(N);
 }
 
 function onEffChange(){
   EFF_FACTOR=getEff();
-  document.getElementById('sk-eff-label').textContent=Math.round(EFF_FACTOR*100)+'%';
-  var N=parseInt(document.getElementById('inp-turbines').value)||1;
+  var pct=Math.round(EFF_FACTOR*100)+'%';
+  document.getElementById('sk-eff-label').textContent=pct;
+  var N=getNTurbines();
   if(window.simHours) computeProduction(N);
 }
 
-function onTurbinesChange(){
-  var t=Math.max(1,parseInt(document.getElementById('inp-turbines').value)||1);
-  document.getElementById('inp-turbines').value=t;
-  var s=Math.round(t/TURB_PER_STRUCT)||1;
-  document.getElementById('inp-struct').value=s;
-  updateDerived(t);
-  if(window.simHours)computeProduction(t);
-}
-
-function onStructChange(){
-  var s=Math.max(1,parseInt(document.getElementById('inp-struct').value)||1);
-  document.getElementById('inp-struct').value=s;
-  var t=s*TURB_PER_STRUCT;
-  document.getElementById('inp-turbines').value=t;
-  updateDerived(t);
-  if(window.simHours)computeProduction(t);
-}
-
+function onTurbinesChange(){ onConfigQtyChange(); }
+function onStructChange(){ onConfigQtyChange(); }
 function updateDerived(t){
-  document.getElementById('der-turbines').innerHTML='Surface totale : <strong>'+(t*SIM_A_UNIT).toFixed(3)+' m²</strong>';
-  document.getElementById('der-struct').innerHTML='= <strong>'+t+' turbines</strong>';
+  document.getElementById('der-turbines').innerHTML='= <strong>'+t+' turbine'+(t>1?'s':'')+'</strong>';
 }
 
 function fmt(v){
@@ -1201,14 +1273,80 @@ function computeProduction(N){
   /* Les deux peuvent donner des totaux différents — ne pas normaliser */
   var gainAnnual=simpleAnnualKwh>0?((hourlyAnnualKwh-simpleAnnualKwh)/simpleAnnualKwh*100):0;
 
-  /* ── KPIs ── */
-  document.getElementById('sk-real').textContent=fmt(hourlyAnnualKwh)+' (brut)';
-  document.getElementById('sk-net').textContent=fmt(hourlyNetKwh);
-  document.getElementById('sk-permur').textContent=fmt(hourlyAnnualKwh/N*18);
-  document.getElementById('sk-hours').textContent=Math.round(totalH/simTotalYears).toLocaleString('fr-FR');
+  /* ── Chaîne de calcul ── */
+  var hasMur=(CONFIG_TYPE==='mur');
+  var murKwh=0, murFavPct=0;
+  if(hasMur){
+    /* Calcul gains mur inline pour la chaîne */
+    var murWh=0, baseWh18=0, favHmur=0, totalProdHmur=0;
+    var domDir=window.simDomDir||0;
+    for(var j=0;j<hrs.length;j++){
+      var v10j=hrs[j].s, v100j=hrs[j].s100||hrs[j].s;
+      var vhj=interpHeight(v10j,v100j,h);
+      var pj=lookupPower(vhj);
+      if(pj<=0)continue;
+      totalProdHmur++;
+      var p18j=pj*18;
+      baseWh18+=p18j;
+      var dirj=hrs[j].d||0;
+      var inFavj=angularDiff(dirj,domDir)<=MUR_FAVORABLE_ANGLE;
+      if(inFavj){favHmur++;murWh+=p18j*MUR_GAIN_FAVORABLE;}
+      else{murWh+=p18j;}
+    }
+    /* Normalise par N (peut être plusieurs murs) */
+    var nMurs=N/18;
+    var murAnnualKwh=murWh/simTotalYears/1000*nMurs;
+    var baseAnnual18=baseWh18/simTotalYears/1000*nMurs;
+    murKwh=murAnnualKwh-baseAnnual18; /* gain mur */
+    murFavPct=totalProdHmur>0?Math.round(favHmur/totalProdHmur*100):0;
+  }
 
-  lastRealKwh=hourlyNetKwh;   /* ROI utilise la production nette */
-  lastAvgKwh=simpleNetKwh;
+  /* Production brute totale */
+  var bruteTot=hourlyAnnualKwh+(hasMur?murKwh:0);
+  /* Production nette */
+  var netTot=bruteTot*eff;
+  /* Production finale avec bonus vent */
+  var finalProd=netTot*gustBonusCoeff;
+
+  lastRealKwh=finalProd;      /* ROI principal = production finale */
+  lastAvgKwh=simpleNetKwh;    /* ROI secondaire = référence sans bonus */
+  window.lastNetRef=netTot;   /* production nette ref pour gust section */
+
+  /* ── Affichage chaîne ── */
+  var chainDiv=document.getElementById('prod-chain');
+  if(chainDiv)chainDiv.style.display='block';
+  document.getElementById('sk-real').textContent=fmt(hourlyAnnualKwh);
+  var chainMurRow=document.getElementById('chain-mur-row');
+  if(chainMurRow){ chainMurRow.style.display=hasMur?'flex':'none'; }
+  if(hasMur){
+    document.getElementById('chain-mur-gain').textContent='+'+fmt(murKwh);
+    document.getElementById('chain-fav-pct').textContent=murFavPct;
+  }
+  var stepEff=hasMur?3:2;
+  var stepGust=stepEff+1;
+  document.getElementById('chain-step-eff').textContent=stepEff;
+  document.getElementById('chain-step-gust').textContent=stepGust;
+  document.getElementById('sk-eff-label').textContent=Math.round(eff*100);
+  document.getElementById('sk-net').textContent=fmt(netTot);
+
+  /* Bonus gust dans chaîne */
+  var gustRow=document.getElementById('chain-gust-row');
+  if(gustRow&&gustMedianRatio){
+    gustRow.style.display='flex';
+    var gcls=GUST_CLASSES.find(function(x){return gustMedianRatio<x.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
+    document.getElementById('chain-gust-type').textContent=gcls.label+' ('+gcls.bLabel+')';
+    document.getElementById('gust-ratio-chain').textContent=gustMedianRatio.toFixed(2);
+    document.getElementById('chain-gust-bonus').textContent='+'+fmt(finalProd-netTot);
+  }
+  document.getElementById('sk-finale').textContent=fmt(finalProd);
+  document.getElementById('sk-ref-only').textContent='Réf. sans bonus : '+fmt(netTot)+' kWh/an';
+
+  /* KPIs compacts */
+  document.getElementById('sk-hours').textContent=Math.round(totalH/simTotalYears).toLocaleString('fr-FR');
+  var skHkpi=document.getElementById('sk-hours-kpi');
+  if(skHkpi)skHkpi.textContent=Math.round(totalH/simTotalYears).toLocaleString('fr-FR');
+  document.getElementById('sk-permur').textContent=fmt(hourlyAnnualKwh/N*18);
+  var skhL=document.getElementById('sk-height-label');if(skhL)skhL.textContent=INSTALL_H+' m';
 
   /* ── Tableau mensuel ── */
   var tbody=document.getElementById('prod-tbody');
@@ -1457,7 +1595,7 @@ function updateGustROI(){
   var N=parseInt(document.getElementById('inp-turbines').value)||1;
   var cost=N*priceUnit;
   /* Production nette de référence */
-  var refKwh=lastRealKwh;
+  var refKwh=window.lastNetRef||lastRealKwh; /* nette sans bonus */
   var refEco=refKwh*priceKwh;
   var refTR=refEco>0?cost/refEco:null;
   /* Production avec bonus rafales */
