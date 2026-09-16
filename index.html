@@ -44,10 +44,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 }
 .btn-analyse:hover{background:#1450a0;}
 #sugg{
-  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  position:absolute;top:calc(100% + 4px);left:0;right:0;min-width:280px;
   background:#fff;border-radius:var(--r-md);box-shadow:var(--sh-md);
-  z-index:300;overflow:hidden;
+  z-index:300;overflow:hidden;white-space:normal;
 }
+.sugg-item{white-space:normal;word-break:break-word;}
 .sugg-item{padding:.75rem 1rem;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);}
 .sugg-item:hover{background:var(--bg);}
 #st{padding:.625rem 1.25rem;font-size:12px;color:var(--blue);background:rgba(26,95,168,.08);display:none;}
@@ -241,7 +242,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <div class="app">
 
 <!-- ── Section 1 : Potentiel de la zone ──────────────────── -->
-<div class="section-wrap" id="panel" style="display:none;">
+<div class="section-wrap" id="panel">
   <div class="sec-header">
     <div class="sec-num">1</div>
     <div class="sec-title">Potentiel de la zone</div>
@@ -252,7 +253,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <!-- Map with rose overlay -->
       <div class="map-wrap">
         <div id="map"></div>
-        <canvas id="rose-canvas" aria-label="Rose des vents"></canvas>
+        <canvas id="rose-canvas" aria-label="Rose des vents" style="display:none;"></canvas>
+        <div id="map-placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.75);pointer-events:none;z-index:400;">
+          <div style="text-align:center;color:#888;font-size:13px;">
+            <div style="font-size:24px;margin-bottom:6px;">🔍</div>
+            Saisissez une adresse ci-dessus pour analyser le potentiel
+          </div>
+        </div>
         <div class="map-label">Carte & rose des vents</div>
       </div>
       <!-- Stats -->
@@ -360,11 +367,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         </div>
         <div class="field-sub" style="color:var(--amber);">Hypothèse — à confirmer par Philéole</div>
         <div class="field-sub">Génératrice, câblage et disponibilité</div>
-        <!-- Courbe info -->
-        <div style="margin-top:.875rem;padding:.625rem .75rem;background:var(--blue-light);border-radius:var(--r-sm);font-size:11px;color:var(--blue);">
-          <strong>Courbe Philéole</strong> · Démarrage ≥ 2 m/s · Max 793,75 W
-          <br>⚠️ Au-delà de 20 m/s : valeur provisoire
-        </div>
+
       </div>
     </div>
   </div>
@@ -470,10 +473,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   </div>
 </div>
 
-<!-- ── Mur Philéole gains ─────────────────────────────────── -->
-<div id="mur-section" style="display:none;margin-bottom:1rem;">
-  <div class="mur-inner">
-    <div style="font-size:18px;">🏗️</div>
     <div>
       <div style="font-size:13px;font-weight:700;color:#fff;">Gains mur Philéole</div>
       <div style="font-size:11px;color:rgba(255,255,255,.45);">Organisation ×1,17 · Déflecteurs ×1,15 · Secteur ±45°</div>
@@ -535,10 +534,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     <span id="rb-avg" style="display:none;"></span>
     <span id="rb-avg-sub" style="display:none;"></span>
 
-    <!-- Gust section -->
-    <div id="gust-section">
-      <div class="gust-row">
-        <div id="gust-icon" style="font-size:20px;">💨</div>
+
         <div>
           <div style="font-size:13px;font-weight:700;" id="gust-label">—</div>
           <div style="font-size:11px;color:var(--muted);">Ratio médian : <strong id="gust-ratio">—</strong> · Bonus : <strong id="gust-bonus-label">—</strong></div>
@@ -601,6 +597,13 @@ function showPanel(){
 <script>
 var D16=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
 var gmap,locMk,roseMk,chartInst,acTimer,chosen=null;
+/* Fix Leaflet icon paths */
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
+});
 /* Simulator globals */
 /* ── Courbe de puissance Philéole ──────────────────────────────
    Source : données fournies par Philéole. Facilement remplaçable.
@@ -785,7 +788,7 @@ async function runAnalysis(lat,lon,dn){
       if(diff<=45)favSecH++;
     });
     window.simFavPct=totalProdH>0?(favSecH/totalProdH*100):0;
-    window.simFavH=favSecH/simTotalYears; /* h/an */
+    window._favSecH=favSecH; /* recalculé après simTotalYears */
 
     var mo=Array(12).fill(null).map(function(){return{s:0,n:0};});
     vd.forEach(function(x){mo[x.m].s+=x.s;mo[x.m].n++;});
@@ -816,8 +819,8 @@ async function runAnalysis(lat,lon,dn){
     var mo10avg=mo10.map(function(v){return parseFloat((v/years).toFixed(1));});
 
     var _lel=document.getElementById('lloc');_lel.style.display='block';_lel.textContent='📍 '+place+' — '+lat.toFixed(3)+', '+lon.toFixed(3)+' — ERA5 2019–2023 · models=era5 ('+Math.round(n/1000)+'k points)';
-    document.getElementById('v0').textContent=avg.toFixed(1)+' m/s';
-    document.getElementById('v1').textContent=mx.toFixed(1)+' m/s';
+    document.getElementById('v0').textContent=mx.toFixed(1)+' m/s';
+    document.getElementById('v1').textContent=avg.toFixed(1)+' m/s';
     document.getElementById('v2').textContent=D16[ds];
     document.getElementById('v3').textContent=cp.toFixed(0)+'%';
     document.getElementById('wb').textContent='k = '+k.toFixed(2)+'   ·   c = '+c.toFixed(2)+' m/s';
@@ -852,13 +855,16 @@ async function runAnalysis(lat,lon,dn){
     /* Store for simulator */
     simSpeeds=sp; simMonths=vd.map(function(x){return x.m;}); simMonthlyAvg=ma;
     simTotalYears=Math.max(1,totalYears);
+    window.simFavH=(window._favSecH||0)/simTotalYears; /* h/an correct */
     /* Init inputs and run first computation */
     setConfig('turbine'); /* init configurateur */
     onHeightChange();
-    showPanel();
+    var ph=document.getElementById('map-placeholder'); if(ph)ph.style.display='none';
+    var rc=document.getElementById('rose-canvas'); if(rc)rc.style.display='block';
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
     document.getElementById('mur-section').style.display='none';
+    if(gmap){setTimeout(function(){gmap.invalidateSize();},200);}
     document.getElementById('gust-section').style.display='none';
     document.getElementById('s1-typology-card').style.display='none';
     window.simGusts=null; gustMedianRatio=null; gustBonusCoeff=1.0;
@@ -1217,7 +1223,7 @@ function computeProduction(N){
     gustRow.style.display='flex';
     var gcls=GUST_CLASSES.find(function(x){return gustMedianRatio<x.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
     document.getElementById('chain-gust-type').textContent=gcls.label+' ('+gcls.bLabel+')';
-    document.getElementById('gust-ratio-chain').textContent=gustMedianRatio.toFixed(2);
+    document.getElementById('gust-ratio-chain').textContent='×'+gustBonusCoeff.toFixed(2);
     document.getElementById('chain-gust-bonus').textContent='+'+fmt(finalProd-netTot);
   }
   document.getElementById('sk-finale').textContent=fmt(finalProd);
@@ -1254,8 +1260,7 @@ function computeProduction(N){
 
   computeROI();
   computeMurGains();
-  /* Synchroniser la section rafales si données disponibles */
-  if(window.simGusts&&gustMedianRatio!==null) updateGustROI();
+  /* updateGustROI removed - section hidden */
 }
 
 /* ── Gains mur Philéole ──────────────────────────────────────── */
@@ -1343,10 +1348,16 @@ function computeROI(){
     if(eco<=0){document.getElementById(valId).textContent='∞';document.getElementById(subId).textContent='Production insuffisante';return;}
     var yrs=cost/eco;
     document.getElementById(valId).textContent=roiLabel(yrs);
-    document.getElementById(subId).textContent='soit '+Math.round(yrs*12)+' mois';
-    if(valId==='rb-real'&&lastAvgKwh>0&&lastAvgKwh!==eco/priceKwh){
-      var refYrs=cost/(lastAvgKwh*priceKwh);
-      document.getElementById(subId).textContent+=' · Référence sans bonus : '+roiLabel(refYrs);
+    if(valId==='rb-real'){
+      var ref=window.lastNetRef||0;
+      var refEco=ref*priceKwh;
+      var sub='soit '+Math.round(yrs*12)+' mois';
+      if(refEco>0&&ref!==eco/priceKwh){
+        sub+=' · Référence sans bonus : '+roiLabel(cost/refEco);
+      }
+      document.getElementById(subId).textContent=sub;
+    } else {
+      document.getElementById(subId).textContent='soit '+Math.round(yrs*12)+' mois';
     }
   }
   setRoi('rb-avg','rb-avg-sub',ecoAvg);
@@ -1507,5 +1518,23 @@ function updateGustROI(){
 ainp.value='';
 setHeight(10); /* init boutons hauteur */
 </script>
+<!-- Gust stubs for JS compat -->
+<span id="gust-section" style="display:none;"></span>
+<span id="gust-icon" style="display:none;"></span>
+<span id="gust-label" style="display:none;"></span>
+<span id="gust-ratio" style="display:none;"></span>
+<span id="gust-bonus-label" style="display:none;"></span>
+<span id="gust-ref-prod" style="display:none;"></span>
+<span id="gust-prod" style="display:none;"></span>
+<span id="gust-eco" style="display:none;"></span>
+<span id="gust-roi" style="display:none;"></span>
+<span id="gust-ref-eco" style="display:none;"></span>
+<span id="gust-ref-roi" style="display:none;"></span>
+<!-- Mur stubs for JS compat -->
+<span id="mur-section" style="display:none;"></span>
+<span id="mur-prod" style="display:none;"></span>
+<span id="mur-gain" style="display:none;"></span>
+<span id="mur-pct" style="display:none;"></span>
+<span id="mur-fav-h" style="display:none;"></span>
 </body>
 </html>
