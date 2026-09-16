@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Analyseur de potentiel éolien — Philéole</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
@@ -44,13 +44,17 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 }
 .btn-analyse:hover{background:#1450a0;}
 #sugg{
+  display:none;
   position:absolute;top:calc(100% + 4px);left:0;right:0;min-width:280px;
   background:#fff;border-radius:var(--r-md);box-shadow:var(--sh-md);
-  z-index:300;overflow:hidden;white-space:normal;
+  border:1px solid var(--border-med);z-index:1000;overflow:hidden;white-space:normal;
 }
-.sugg-item{white-space:normal;word-break:break-word;}
-.sugg-item{padding:.75rem 1rem;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);}
-.sugg-item:hover{background:var(--bg);}
+.si{display:flex;align-items:flex-start;gap:.625rem;padding:.75rem 1rem;cursor:pointer;border-bottom:1px solid var(--border);background:#fff;}
+.si:last-child{border-bottom:0;}
+.si:hover,.si:focus{background:var(--blue-light);outline:none;}
+.si-pin{width:16px;height:16px;flex:0 0 16px;color:var(--muted);margin-top:1px;}
+.si-main{font-size:13px;font-weight:650;color:var(--text);line-height:1.3;white-space:normal;word-break:break-word;}
+.si-sub{font-size:11px;color:var(--muted);line-height:1.35;margin-top:2px;white-space:normal;word-break:break-word;}
 #st{padding:.625rem 1.25rem;font-size:12px;color:var(--blue);background:rgba(26,95,168,.08);display:none;}
 
 /* ── Section headers ── */
@@ -95,18 +99,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .mch-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;}
 #mch{max-height:110px;}
 
-/* Typology & sector cards */
-.s1-cards{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem;}
-@media(max-width:480px){.s1-cards{grid-template-columns:1fr;}}
+/* Secteur optimal */
+.s1-cards{display:grid;grid-template-columns:1fr;gap:.75rem;margin-top:.75rem;}
 .s1-card{background:var(--card);border-radius:var(--r-md);padding:.875rem 1rem;border:1px solid var(--border);box-shadow:var(--sh);}
 .s1-card-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.375rem;}
 .s1-card-val{font-size:18px;font-weight:800;color:var(--text);}
 .s1-card-sub{font-size:11px;color:var(--muted);margin-top:.25rem;}
-.s1-badge{
-  float:right;background:rgba(26,148,105,.15);color:var(--teal);
-  font-size:12px;font-weight:700;padding:2px 8px;border-radius:20px;
-  margin-left:.5rem;
-}
 
 /* Collapsible detail */
 .detail-toggle{
@@ -172,6 +170,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .prod-finale-lbl{font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.3px;}
 .prod-finale-val{font-size:22px;font-weight:900;color:#fff;}
 .prod-ref{font-size:11px;color:var(--muted);text-align:right;}
+.prod-table{width:100%;border-collapse:collapse;font-size:12px;min-width:650px;}
+.prod-table th,.prod-table td{padding:.55rem .75rem;border-bottom:1px solid var(--border);}
+.prod-table th{text-align:right;white-space:nowrap;}
+.prod-table th:first-child,.prod-table td:first-child{text-align:left;}
+.prod-table td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;}
+.prod-table tbody tr:nth-child(even){background:#fafafa;}
+.td-real{color:var(--blue);font-weight:700;}
+.td-bonus{font-weight:700;}
 
 /* ── Section 4 : ROI ── */
 .sec-header.purple{background:linear-gradient(135deg,#5b21b6,#6d28d9);}
@@ -195,20 +201,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   cursor:pointer;text-align:center;margin-top:.5rem;
 }
 .btn-cta:hover{background:#0a1a30;}
-
-/* ── Gust section ── */
-#gust-section{padding:.875rem;background:var(--bg);border-radius:var(--r-md);border:1px solid var(--border);margin-bottom:.875rem;display:none;}
-.gust-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.625rem;}
-.gust-delta{display:flex;gap:1rem;flex-wrap:wrap;align-items:center;font-size:12px;}
-
-/* ── Mur section ── */
-#mur-section{display:none;}
-.mur-inner{background:linear-gradient(135deg,#0a1f0e,#1a4d24);border-radius:var(--r-md) var(--r-md) 0 0;padding:.875rem 1.25rem;display:flex;align-items:center;gap:10px;}
-.mur-body{background:var(--card);border-radius:0 0 var(--r-md) var(--r-md);padding:1rem;border:1px solid #d1fae5;}
-.mur-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.5rem;}
-.mur-kpi{background:var(--bg);border-radius:var(--r-sm);padding:.625rem .875rem;}
-.mur-kpi-lbl{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:.25rem;}
-.mur-kpi-val{font-size:16px;font-weight:800;color:var(--text);}
+.modal-backdrop{position:fixed;inset:0;background:rgba(11,35,64,.68);z-index:2000;display:none;align-items:center;justify-content:center;padding:1rem;}
+.modal-backdrop.open{display:flex;}
+.modal-card{width:min(520px,100%);max-height:calc(100vh - 2rem);overflow-y:auto;background:#fff;border-radius:var(--r-lg);box-shadow:0 20px 60px rgba(0,0,0,.28);padding:1.25rem;}
+.modal-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;margin-bottom:1rem;}
+.modal-title{font-size:19px;font-weight:850;color:var(--navy);}
+.modal-sub{font-size:12px;color:var(--muted);margin-top:.25rem;}
+.modal-close{width:34px;height:34px;border:0;border-radius:50%;background:var(--bg);font-size:20px;cursor:pointer;flex-shrink:0;}
+.lead-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.lead-grid .full{grid-column:1/-1;}
+.consent-row{display:flex;align-items:flex-start;gap:.55rem;font-size:11px;color:var(--muted);margin:.875rem 0;}
+.form-feedback{display:none;margin-top:.75rem;padding:.7rem;border-radius:var(--r-sm);font-size:12px;}
+.form-feedback.ok{display:block;background:#e8f7f1;color:#16684d;}
+.form-feedback.err{display:block;background:#fff1f2;color:#9f1239;}
 
 /* ── Potential card ── */
 #pot{
@@ -221,6 +226,39 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .section-wrap{margin-bottom:1rem;border-radius:var(--r-md);overflow:hidden;box-shadow:var(--sh-md);}
 .wri{background:transparent!important;}
 #lloc{font-size:11px;color:var(--muted);padding:.375rem .875rem;display:none;}
+
+@media(max-width:639px){
+  .app-header{position:relative;display:block;padding:.75rem;}
+  .app-logo{margin-bottom:.625rem;font-size:16px;}
+  .search-wrap{width:100%;}
+  .search-box input{font-size:16px;min-height:44px;}
+  .btn-analyse{min-height:44px;padding:.625rem .875rem;}
+  #sugg{position:fixed;top:114px;left:.75rem;right:.75rem;min-width:0;max-height:45vh;overflow-y:auto;}
+  .app{padding:.75rem .625rem 1.5rem;}
+  .sec-body{padding:.875rem;}
+  .sec-header{padding:.75rem .875rem;}
+  #map{height:300px;}
+  .cfg-buttons{grid-template-columns:1fr;}
+  .cfg-btn2{text-align:left;padding:.7rem .8rem;}
+  .cfg-btn2 small{display:inline;margin-left:.4rem;}
+  .device-grid{gap:1rem;}
+  .prod-step{align-items:flex-start;flex-wrap:wrap;}
+  .step-val{width:100%;padding-left:36px;}
+  .prod-finale{align-items:flex-start;gap:.75rem;}
+  .prod-finale-val{font-size:19px;text-align:right;}
+  .roi-fields,.roi-summary{grid-template-columns:1fr;}
+  .roi-chart-wrap{height:210px;}
+  .lead-grid{grid-template-columns:1fr;}
+  .lead-grid .full{grid-column:auto;}
+}
+
+@media(max-width:390px){
+  .search-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;}
+  .btn-analyse{padding:.625rem .7rem;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .stat-card{padding:.7rem;}
+  .stat-val{font-size:19px;}
+}
 </style>
 </head>
 <body>
@@ -230,8 +268,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <div class="app-logo">≈ Analyseur éolien<span>Philéole</span></div>
   <div class="search-wrap">
     <div class="search-box" style="position:relative;">
-      <input type="text" id="addr" placeholder="Adresse, ville…" autocomplete="off" oninput="onAddrInput()" onkeydown="onAddrKey(event)">
-      <div id="sugg"></div>
+      <input type="text" id="addr" placeholder="Saisissez une adresse ou une ville" autocomplete="off" aria-autocomplete="list" aria-controls="sugg">
+      <div id="sugg" role="listbox" aria-label="Suggestions d’adresses"></div>
     </div>
     <button class="btn-analyse" onclick="doAnalysis()">Analyser</button>
   </div>
@@ -254,10 +292,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <div class="map-wrap">
         <div id="map"></div>
         <canvas id="rose-canvas" aria-label="Rose des vents" style="display:none;"></canvas>
-        <div id="map-placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.75);pointer-events:none;z-index:400;">
-          <div style="text-align:center;color:#888;font-size:13px;">
-            <div style="font-size:24px;margin-bottom:6px;">🔍</div>
-            Saisissez une adresse ci-dessus pour analyser le potentiel
+        <div id="map-placeholder" style="position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);pointer-events:none;z-index:400;padding:.55rem .8rem;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.16);width:max-content;max-width:calc(100% - 32px);">
+          <div style="text-align:center;color:#64748b;font-size:12px;">
+            Saisissez une adresse pour lancer l’analyse
           </div>
         </div>
         <div class="map-label">Carte & rose des vents</div>
@@ -277,16 +314,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       </div>
     </div>
 
-    <!-- Typology + Sector cards -->
+    <!-- Secteur de vent optimal -->
     <div class="s1-cards" style="margin-top:.875rem;">
-      <div class="s1-card" id="s1-typology-card" style="display:none;">
-        <div class="s1-card-lbl">≈ Typologie du vent</div>
-        <div class="s1-card-val">
-          <span id="s1-wind-type">—</span>
-          <span class="s1-badge" id="s1-gust-bonus">—</span>
-        </div>
-        <div class="s1-card-sub">Ratio médian rafale / vent moyen : <strong id="s1-gust-ratio">—</strong></div>
-      </div>
       <div class="s1-card" id="s1-sector-card" style="display:none;">
         <div class="s1-card-lbl">⊙ Secteur de vent optimal</div>
         <div class="s1-card-val"><span id="s1-fav-pct">—</span> % du temps</div>
@@ -385,21 +414,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <div class="prod-step">
         <div class="step-num">1</div>
         <div class="step-info">
-          <div class="step-title">Production brute de référence</div>
+          <div class="step-title">Production brute estimée</div>
           <div class="step-sub">Courbe Philéole × données ERA5 · <span id="sk-hours">—</span> h/an productives à <span id="sk-height-label">10 m</span></div>
         </div>
         <div class="step-val" id="sk-real">—</div>
       </div>
-      <!-- Step 2 : mur (hidden if not mur) -->
-      <div class="prod-step bonus" id="chain-mur-row" style="display:none;">
-        <div class="step-num" style="background:var(--teal);">2</div>
-        <div class="step-info">
-          <div class="step-title">Gains mur et déflecteurs</div>
-          <div class="step-sub">×1,17 organisation · ×1,15 déflecteurs · <span id="chain-fav-pct">—</span>% en secteur optimal</div>
-        </div>
-        <div class="step-val plus" id="chain-mur-gain">—</div>
-      </div>
-      <!-- Step 3 : rendement -->
+      <!-- Step 2 : rendement -->
       <div class="prod-step">
         <div class="step-num" style="background:var(--purple);" id="chain-step-eff">2</div>
         <div class="step-info">
@@ -408,22 +428,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         </div>
         <div class="step-val" id="sk-net">—</div>
       </div>
-      <!-- Step 4 : gust bonus (hidden until gust data) -->
-      <div class="prod-step bonus" id="chain-gust-row" style="display:none;">
-        <div class="step-num" style="background:var(--amber);" id="chain-step-gust">3</div>
-        <div class="step-info">
-          <div class="step-title">Bonus « <span id="chain-gust-type">—</span> »</div>
-          <div class="step-sub">Coefficient appliqué : ×<span id="gust-ratio-chain">—</span></div>
-        </div>
-        <div class="step-val plus" id="chain-gust-bonus">—</div>
-      </div>
     </div>
 
     <!-- Production finale -->
     <div class="prod-finale">
       <div>
         <div class="prod-finale-lbl">Production finale estimée</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.45);">Configuration et bonus inclus</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.55);">Simulation horaire après rendement global</div>
       </div>
       <div class="prod-finale-val"><span id="sk-finale">—</span> kWh/an</div>
     </div>
@@ -432,7 +443,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     <!-- KPIs compacts -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.875rem;">
       <div class="stat-card"><div class="stat-lbl">Heures productives</div><div style="font-size:18px;font-weight:800;" id="sk-hours-kpi">—</div><div style="font-size:11px;color:var(--muted);">h/an</div></div>
-      <div class="stat-card"><div class="stat-lbl">Par mur (18 turbines)</div><div style="font-size:18px;font-weight:800;" id="sk-permur">—</div><div style="font-size:11px;color:var(--muted);">kWh/an · brut</div></div>
+      <div class="stat-card"><div class="stat-lbl">Par turbine</div><div style="font-size:18px;font-weight:800;" id="sk-perturbine">—</div><div style="font-size:11px;color:var(--muted);">kWh/an · net</div></div>
     </div>
 
     <!-- Expandable monthly table -->
@@ -441,14 +452,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
     <div id="monthly-content" style="display:none;margin-top:.5rem;overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <table class="prod-table">
         <thead id="prod-thead">
           <tr style="background:var(--navy);color:#fff;">
             <th style="padding:.5rem .75rem;text-align:left;">Mois</th>
             <th style="padding:.5rem .75rem;text-align:right;">H vent</th>
             <th style="padding:.5rem .75rem;text-align:right;">Vent moy. (<span id="th-height">10m</span>)</th>
-            <th style="padding:.5rem .75rem;text-align:right;">Simplifiée</th>
-            <th style="padding:.5rem .75rem;text-align:right;color:#60d4a0;">Horaire</th>
+            <th>Mensuelle nette</th>
+            <th style="color:#60d4a0;">Horaire nette</th>
             <th style="padding:.5rem .75rem;text-align:right;">Écart</th>
           </tr>
         </thead>
@@ -465,25 +476,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         </tfoot>
       </table>
       <div style="font-size:11px;color:var(--muted);margin-top:.75rem;line-height:1.6;padding:.625rem;background:var(--bg);border-radius:var(--r-sm);" id="sim-note-text">
-        Production calculée à partir de la courbe de puissance attendue fournie par Philéole et des vitesses de vent ERA5. Une interpolation linéaire est réalisée entre les points de la courbe.
-        <strong>Estimation simplifiée</strong> : P(v_moy_mensuelle) × heures. <strong>Simulation horaire</strong> : Σ P_courbe(v_h) heure par heure.
-        ⚠️ Au-delà de 20 m/s, 793,75 W/turbine provisoire. Pas d'interactions aérodynamiques modélisées.
+        Production calculée à partir de la courbe de puissance attendue fournie par Philéole et des vitesses horaires ERA5, interpolées à la hauteur choisie.
+        <strong>Estimation mensuelle</strong> : puissance correspondant au vent moyen des heures productives × nombre d’heures.
+        <strong>Simulation horaire</strong> : somme de la puissance calculée pour chaque heure. Les deux colonnes intègrent le rendement global sélectionné.
       </div>
-    </div>
-  </div>
-</div>
-
-    <div>
-      <div style="font-size:13px;font-weight:700;color:#fff;">Gains mur Philéole</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);">Organisation ×1,17 · Déflecteurs ×1,15 · Secteur ±45°</div>
-    </div>
-  </div>
-  <div class="mur-body">
-    <div class="mur-kpis">
-      <div class="mur-kpi"><div class="mur-kpi-lbl">Production / mur · avec gains</div><div class="mur-kpi-val" id="mur-prod">—</div><div style="font-size:10px;color:var(--muted);">kWh/an</div></div>
-      <div class="mur-kpi"><div class="mur-kpi-lbl">Gain vs turbines isolées</div><div class="mur-kpi-val" id="mur-gain">—</div><div style="font-size:10px;color:var(--muted);">kWh suppl.</div></div>
-      <div class="mur-kpi"><div class="mur-kpi-lbl">Vent favorable</div><div class="mur-kpi-val" id="mur-pct">—</div><div style="font-size:10px;color:var(--muted);">% du temps</div></div>
-      <div class="mur-kpi"><div class="mur-kpi-lbl">H favorables</div><div class="mur-kpi-val" id="mur-fav-h">—</div><div style="font-size:10px;color:var(--muted);">h/an</div></div>
     </div>
   </div>
 </div>
@@ -530,26 +526,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <div id="rb-real" class="roi-result-val">—</div>
       <div class="roi-result-ref" id="rb-real-sub"></div>
     </div>
-    <!-- Hidden compat IDs -->
+    <!-- Référence mensuelle conservée pour le graphique -->
     <span id="rb-avg" style="display:none;"></span>
     <span id="rb-avg-sub" style="display:none;"></span>
-
-
-        <div>
-          <div style="font-size:13px;font-weight:700;" id="gust-label">—</div>
-          <div style="font-size:11px;color:var(--muted);">Ratio médian : <strong id="gust-ratio">—</strong> · Bonus : <strong id="gust-bonus-label">—</strong></div>
-        </div>
-      </div>
-      <div style="background:var(--card);border-radius:var(--r-sm);padding:.75rem;font-size:11px;color:var(--muted);">
-        ✅ Bonus intégré dans le temps de retour ci-dessus.
-        Production sans bonus : <strong id="gust-ref-prod">—</strong> kWh/an →
-        Avec bonus : <strong id="gust-prod">—</strong> kWh/an
-        (+ <strong id="gust-eco">—</strong> kWh/an)
-      </div>
-      <span id="gust-roi" style="display:none;"></span>
-      <span id="gust-ref-eco" style="display:none;"></span>
-      <span id="gust-ref-roi" style="display:none;"></span>
-    </div>
 
     <!-- Chart -->
     <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">Remboursement cumulé</div>
@@ -563,11 +542,57 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     </div>
 
     <!-- CTA -->
-    <button class="btn-cta">Recevoir mon analyse personnalisée</button>
+    <button class="btn-cta" type="button" onclick="openLeadModal()">Je demande mon analyse personnalisée</button>
   </div>
 </div>
 
 </div><!-- end .app -->
+
+<div class="modal-backdrop" id="lead-modal" role="dialog" aria-modal="true" aria-labelledby="lead-title">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="lead-title">Demander une analyse personnalisée</div>
+        <div class="modal-sub">Laissez vos coordonnées et les résultats de cette simulation seront joints automatiquement à votre demande.</div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeLeadModal()" aria-label="Fermer">×</button>
+    </div>
+    <form name="demande-analyse" id="lead-form" method="POST" data-netlify="true" netlify-honeypot="bot-field" onsubmit="submitLeadForm(event)">
+      <input type="hidden" name="form-name" value="demande-analyse">
+      <p style="display:none;"><label>Ne pas remplir : <input name="bot-field"></label></p>
+      <input type="hidden" name="adresse_simulation" id="lead-address">
+      <input type="hidden" name="configuration" id="lead-config">
+      <input type="hidden" name="hauteur" id="lead-height">
+      <input type="hidden" name="production_estimee" id="lead-production">
+      <input type="hidden" name="roi_estime" id="lead-roi">
+      <div class="lead-grid">
+        <div>
+          <label class="field-lbl" for="lead-name">Nom *</label>
+          <input class="inp-field" id="lead-name" name="nom" autocomplete="name" required>
+        </div>
+        <div>
+          <label class="field-lbl" for="lead-email">Email *</label>
+          <input class="inp-field" id="lead-email" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div>
+          <label class="field-lbl" for="lead-phone">Téléphone</label>
+          <input class="inp-field" id="lead-phone" name="telephone" type="tel" autocomplete="tel">
+        </div>
+        <div>
+          <label class="field-lbl" for="lead-company">Organisation</label>
+          <input class="inp-field" id="lead-company" name="organisation" autocomplete="organization">
+        </div>
+        <div class="full">
+          <label class="field-lbl" for="lead-message">Votre projet</label>
+          <textarea class="inp-field" id="lead-message" name="message" rows="3" style="resize:vertical;font-family:inherit;"></textarea>
+        </div>
+      </div>
+      <label class="consent-row"><input type="checkbox" name="consentement" required> <span>J’accepte que Philéole utilise ces informations pour répondre à ma demande d’analyse.</span></label>
+      <button class="btn-cta" id="lead-submit" type="submit" style="margin-top:0;">Envoyer ma demande</button>
+      <div class="form-feedback" id="lead-feedback" role="status"></div>
+    </form>
+  </div>
+</div>
 
 <script>
 function toggleDetail(){
@@ -590,6 +615,38 @@ function showPanel(){
   var panel=document.getElementById('panel');
   if(panel)panel.style.display='block';
 }
+function openLeadModal(){
+  var snap=window.lastProductionSnapshot||{};
+  document.getElementById('lead-address').value=document.getElementById('addr').value||'';
+  document.getElementById('lead-config').value=CONFIG_TYPE+' · '+getNTurbines()+' turbine(s)';
+  document.getElementById('lead-height').value=(snap.height||getHeight())+' m';
+  document.getElementById('lead-production').value=isFinite(snap.netKwh)?Math.round(snap.netKwh)+' kWh/an':'';
+  document.getElementById('lead-roi').value=document.getElementById('rb-real').textContent||'';
+  document.getElementById('lead-modal').classList.add('open');
+  setTimeout(function(){document.getElementById('lead-name').focus();},0);
+}
+function closeLeadModal(){document.getElementById('lead-modal').classList.remove('open');}
+async function submitLeadForm(event){
+  event.preventDefault();
+  var form=event.currentTarget;
+  var btn=document.getElementById('lead-submit');
+  var feedback=document.getElementById('lead-feedback');
+  btn.disabled=true;btn.textContent='Envoi en cours…';feedback.className='form-feedback';
+  try{
+    var body=new URLSearchParams(new FormData(form)).toString();
+    var response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body});
+    if(!response.ok)throw new Error('Échec de l’envoi');
+    feedback.textContent='Votre demande a bien été envoyée.';
+    feedback.className='form-feedback ok';
+    btn.textContent='Demande envoyée';
+  }catch(error){
+    feedback.textContent='L’envoi n’a pas abouti. Réessayez dans quelques instants.';
+    feedback.className='form-feedback err';
+    btn.disabled=false;btn.textContent='Envoyer ma demande';
+  }
+}
+document.getElementById('lead-modal').addEventListener('click',function(event){if(event.target===this)closeLeadModal();});
+document.addEventListener('keydown',function(event){if(event.key==='Escape')closeLeadModal();});
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -605,10 +662,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
 });
 /* Simulator globals */
-/* ── Courbe de puissance Philéole ──────────────────────────────
-   Source : données fournies par Philéole. Facilement remplaçable.
-   Au-delà de 20 m/s : valeur provisoire (793,75 W) — vitesse de coupure à confirmer.
-────────────────────────────────────────────────────────────── */
+/* Courbe de puissance attendue fournie par Philéole. */
 var POWER_CURVE=[
   [0,0],[1,0.1],[2,0.75],[3,2.75],[4,6.25],
   [5,12.5],[6,21.5],[7,34],[8,50.75],[9,72.25],
@@ -616,34 +670,31 @@ var POWER_CURVE=[
   [15,335],[16,406.5],[17,487.5],[18,578.75],[19,680.5],
   [20,793.75]
 ];
-var CURVE_MAX_POWER=793.75; /* W provisoire au-delà de 20 m/s */
+var CURVE_MAX_POWER=793.75;
 var PHY_CUT=2;              /* m/s seuil de démarrage */
 var PHY_A=0.297;            /* m² surface — référence */
 var INSTALL_H=10;           /* hauteur d'installation (m), défaut 10 */
 var EFF_FACTOR=0.80;        /* coefficient de rendement global, hypothèse */
-/* ── Gains mur Philéole ───────────────────────────────────── */
-var MUR_GAIN_STRUCT=1.17;     /* gain organisation des éoliennes entre elles */
-var MUR_GAIN_DEFECT=1.15;     /* gain déflecteurs haut/bas */
-var MUR_GAIN_FAVORABLE=MUR_GAIN_STRUCT*MUR_GAIN_DEFECT; /* = 1.3455 */
-var MUR_FAVORABLE_ANGLE=45;   /* ±45° autour de la direction dominante */
-/* ── Bonus de rafales ─────────────────────────────────────────────
-   Classification basée sur le ratio médian gust/mean ERA5.
-   Seuils et coefficients facilement modifiables. */
+/* Coefficients intégrés au calcul, sans bloc de présentation dédié. */
+var MUR_GAIN_STRUCT=1.17;
+var MUR_GAIN_DEFLECTOR=1.15;
+var MUR_GAIN_FAVORABLE=MUR_GAIN_STRUCT*MUR_GAIN_DEFLECTOR;
+var MUR_FAVORABLE_ANGLE=45;
 var GUST_CLASSES=[
-  {maxRatio:1.30,label:'Vent stable',     bonus:1.10,icon:'🌤️',bLabel:'+10%'},
-  {maxRatio:1.50,label:'Vent fluctuant',  bonus:1.25,icon:'🌬️',bLabel:'+25%'},
-  {maxRatio:1.70,label:'Vent instable',   bonus:1.40,icon:'💨',bLabel:'+40%'},
-  {maxRatio:999, label:'Vent rafaleux',   bonus:1.60,icon:'🌪️',bLabel:'+60%'}
+  {maxRatio:1.30,bonus:1.10},
+  {maxRatio:1.50,bonus:1.25},
+  {maxRatio:1.70,bonus:1.40},
+  {maxRatio:999,bonus:1.60}
 ];
-var gustBonusCoeff=1.0;   /* mis à jour par computeGustTypology() */
-var gustMedianRatio=null; /* ratio médian calculé */
+var gustBonusCoeff=1.0;
+var gustMedianRatio=null;
 var simMonthlyAvg=null, simTotalYears=1;
 var SIM_A_UNIT=PHY_A;
 
 /* Lookup dans la courbe Philéole avec interpolation linéaire */
 function lookupPower(v){
   if(!isFinite(v)||v<PHY_CUT)return 0;
-  if(v>=20)return CURVE_MAX_POWER; /* provisoire — vitesse de coupure à confirmer */
+  if(v>=20)return CURVE_MAX_POWER;
   for(var i=0;i<POWER_CURVE.length-1;i++){
     var v0=POWER_CURVE[i][0], p0=POWER_CURVE[i][1];
     var v1=POWER_CURVE[i+1][0], p1=POWER_CURVE[i+1][1];
@@ -856,6 +907,9 @@ async function runAnalysis(lat,lon,dn){
     simSpeeds=sp; simMonths=vd.map(function(x){return x.m;}); simMonthlyAvg=ma;
     simTotalYears=Math.max(1,totalYears);
     window.simFavH=(window._favSecH||0)/simTotalYears; /* h/an correct */
+    gustBonusCoeff=1.0;
+    gustMedianRatio=null;
+    window.simGusts=null;
     /* Init inputs and run first computation */
     setConfig('turbine'); /* init configurateur */
     onHeightChange();
@@ -863,11 +917,7 @@ async function runAnalysis(lat,lon,dn){
     var rc=document.getElementById('rose-canvas'); if(rc)rc.style.display='block';
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
-    document.getElementById('mur-section').style.display='none';
     if(gmap){setTimeout(function(){gmap.invalidateSize();},200);}
-    document.getElementById('gust-section').style.display='none';
-    document.getElementById('s1-typology-card').style.display='none';
-    window.simGusts=null; gustMedianRatio=null; gustBonusCoeff=1.0;
     /* Afficher secteur optimal section 1 */
     var s1sec=document.getElementById('s1-sector-card');
     var s1pct=document.getElementById('s1-fav-pct');
@@ -877,11 +927,9 @@ async function runAnalysis(lat,lon,dn){
       if(s1h)s1h.textContent=Math.round(window.simFavH).toLocaleString('fr-FR');
       s1sec.style.display='block';
     }
-    /* Rafales : fetch en arrière-plan, non bloquant */
+    /* Le coefficient de variabilité est calculé en arrière-plan puis réinjecté
+       dans la production, sans afficher de typologie dédiée. */
     fetchGustData(lat,lon);
-
-
-
     updateMap(lat,lon,scts,ssps,n,avg,D16[ds],place,ds);
     drawMonthly(ma);
     drawDays(mo5avg,mo10avg);
@@ -1043,10 +1091,6 @@ function setConfig(type){
   var L=labels[type];
   document.getElementById('cfg-qty-label').textContent=L[0];
   document.getElementById('cfg-unit-label').textContent=L[1];
-  /* Bonus mur chain step */
-  var hasMur=(type==='mur');
-  var chainMur=document.getElementById('chain-mur-row');
-  if(chainMur) chainMur.style.display=hasMur?'flex':'none';
   onConfigQtyChange();
 }
 
@@ -1097,8 +1141,7 @@ function onHeightChange(){
 
 function onEffChange(){
   EFF_FACTOR=getEff();
-  var pct=Math.round(EFF_FACTOR*100)+'%';
-  document.getElementById('sk-eff-label').textContent=pct;
+  document.getElementById('sk-eff-label').textContent=Math.round(EFF_FACTOR*100);
   var N=getNTurbines();
   if(window.simHours) computeProduction(N);
 }
@@ -1110,9 +1153,15 @@ function updateDerived(t){
 }
 
 function fmt(v){
-  if(v>=10)return v.toFixed(0);
-  if(v>=1)return v.toFixed(1);
-  return (v*1000).toFixed(1)+' Wh';
+  if(!isFinite(v))return '—';
+  return v.toLocaleString('fr-FR',{maximumFractionDigits:v>=10?0:1,minimumFractionDigits:0});
+}
+
+function fmtKwh(v){ return fmt(v)+' kWh/an'; }
+
+function angularDiff(a,b){
+  var d=Math.abs(((a-b)+360)%360);
+  return d>180?360-d:d;
 }
 
 function computeProduction(N){
@@ -1120,201 +1169,104 @@ function computeProduction(N){
   var hrs=window.simHours;
   var h=INSTALL_H;
   var eff=EFF_FACTOR;
-
-  /* ── Méthode 2 : Simulation horaire ERA5 heure par heure ──
-     P = calcPower(interpHeight(v10,v100,h)) pour chaque heure */
-  var hourlyMonthWh=Array(12).fill(0);   /* Wh bruts par mois */
-  var monthH=Array(12).fill(0);          /* heures productives */
-  var monthSumVh=Array(12).fill(0);      /* somme vitesses à hauteur h */
-  var totalH=0, totalWh=0;
+  var hourlyMonthBaseWh=Array(12).fill(0);
+  var hourlyMonthAdjustedWh=Array(12).fill(0);
+  var monthH=Array(12).fill(0);
+  var monthSumVh=Array(12).fill(0);
+  var totalH=0,totalBaseWh=0,totalAdjustedWh=0,totalProductiveV=0;
+  var isWall=CONFIG_TYPE==='mur';
+  var dominantDirection=window.simDomDir||0;
 
   for(var i=0;i<hrs.length;i++){
-    var v10=hrs[i].s, v100=hrs[i].s100||hrs[i].s;
+    var v10=hrs[i].s,v100=hrs[i].s100||hrs[i].s;
     var vh=interpHeight(v10,v100,h);
     var m=hrs[i].m;
-    /* Heures productives = v à hauteur ≥ PHY_CUT */
     if(vh>=PHY_CUT){
       monthH[m]++;
       monthSumVh[m]+=vh;
       totalH++;
+      totalProductiveV+=vh;
     }
     var p=calcPower(vh);
-    hourlyMonthWh[m]+=p;
-    totalWh+=p;
-  }
-
-  var hourlyAnnualKwh=totalWh/simTotalYears*N/1000;
-  var hourlyMonthKwh=hourlyMonthWh.map(function(w){return w/simTotalYears*N/1000;});
-  var hourlyNetKwh=hourlyAnnualKwh*eff;
-
-  /* ── Méthode 1 : Estimation simplifiée (vitesse mensuelle moyenne) ── */
-  var monthAvgVh=monthH.map(function(cnt,m){return cnt>0?monthSumVh[m]/cnt:0;});
-  var simpleMonthKwh=monthAvgVh.map(function(v,m){
-    var p=calcPower(v);
-    var hrs_m=monthH[m]/simTotalYears; /* heures productives du mois */
-    return p*hrs_m*N/1000;
-  });
-  var simpleAnnualKwh=simpleMonthKwh.reduce(function(a,b){return a+b;},0);
-  var simpleNetKwh=simpleAnnualKwh*eff;
-
-  /* ── Écart entre les deux méthodes ── */
-  /* Les deux peuvent donner des totaux différents — ne pas normaliser */
-  var gainAnnual=simpleAnnualKwh>0?((hourlyAnnualKwh-simpleAnnualKwh)/simpleAnnualKwh*100):0;
-
-  /* ── Chaîne de calcul ── */
-  var hasMur=(CONFIG_TYPE==='mur');
-  var murKwh=0, murFavPct=0;
-  if(hasMur){
-    /* Calcul gains mur inline pour la chaîne */
-    var murWh=0, baseWh18=0, favHmur=0, totalProdHmur=0;
-    var domDir=window.simDomDir||0;
-    for(var j=0;j<hrs.length;j++){
-      var v10j=hrs[j].s, v100j=hrs[j].s100||hrs[j].s;
-      var vhj=interpHeight(v10j,v100j,h);
-      var pj=lookupPower(vhj);
-      if(pj<=0)continue;
-      totalProdHmur++;
-      var p18j=pj*18;
-      baseWh18+=p18j;
-      var dirj=hrs[j].d||0;
-      var inFavj=angularDiff(dirj,domDir)<=MUR_FAVORABLE_ANGLE;
-      if(inFavj){favHmur++;murWh+=p18j*MUR_GAIN_FAVORABLE;}
-      else{murWh+=p18j;}
+    var wallCoeff=1;
+    if(isWall&&p>0&&angularDiff(hrs[i].d||0,dominantDirection)<=MUR_FAVORABLE_ANGLE){
+      wallCoeff=MUR_GAIN_FAVORABLE;
     }
-    /* Normalise par N (peut être plusieurs murs) */
-    var nMurs=N/18;
-    var murAnnualKwh=murWh/simTotalYears/1000*nMurs;
-    var baseAnnual18=baseWh18/simTotalYears/1000*nMurs;
-    murKwh=murAnnualKwh-baseAnnual18; /* gain mur */
-    murFavPct=totalProdHmur>0?Math.round(favHmur/totalProdHmur*100):0;
+    hourlyMonthBaseWh[m]+=p;
+    hourlyMonthAdjustedWh[m]+=p*wallCoeff;
+    totalBaseWh+=p;
+    totalAdjustedWh+=p*wallCoeff;
   }
 
-  /* Production brute totale */
-  var bruteTot=hourlyAnnualKwh+(hasMur?murKwh:0);
-  /* Production nette */
-  var netTot=bruteTot*eff;
-  /* Production finale avec bonus vent */
-  var finalProd=netTot*gustBonusCoeff;
+  var baseAnnualGrossKwh=totalBaseWh/simTotalYears*N/1000;
+  var hourlyAnnualGrossKwh=totalAdjustedWh/simTotalYears*N/1000*gustBonusCoeff;
+  var hourlyMonthNetKwh=hourlyMonthAdjustedWh.map(function(w){return w/simTotalYears*N/1000*gustBonusCoeff*eff;});
+  var hourlyAnnualNetKwh=hourlyAnnualGrossKwh*eff;
 
-  lastRealKwh=finalProd;      /* ROI principal = production finale */
-  lastAvgKwh=simpleNetKwh;    /* ROI secondaire = référence sans bonus */
-  window.lastNetRef=netTot;   /* production nette ref pour gust section */
+  var monthAvgVh=monthH.map(function(cnt,m){return cnt>0?monthSumVh[m]/cnt:0;});
+  var simpleMonthNetKwh=monthAvgVh.map(function(v,m){
+    var productiveHours=monthH[m]/simTotalYears;
+    var wallEnergyFactor=hourlyMonthBaseWh[m]>0?hourlyMonthAdjustedWh[m]/hourlyMonthBaseWh[m]:1;
+    return calcPower(v)*productiveHours*N/1000*wallEnergyFactor*gustBonusCoeff*eff;
+  });
+  var simpleAnnualNetKwh=simpleMonthNetKwh.reduce(function(a,b){return a+b;},0);
+  var annualGap=simpleAnnualNetKwh>0?((hourlyAnnualNetKwh-simpleAnnualNetKwh)/simpleAnnualNetKwh*100):0;
 
-  /* ── Affichage chaîne ── */
-  var chainDiv=document.getElementById('prod-chain');
-  if(chainDiv)chainDiv.style.display='block';
-  document.getElementById('sk-real').textContent=fmt(hourlyAnnualKwh);
-  var chainMurRow=document.getElementById('chain-mur-row');
-  if(chainMurRow){ chainMurRow.style.display=hasMur?'flex':'none'; }
-  if(hasMur){
-    document.getElementById('chain-mur-gain').textContent='+'+fmt(murKwh);
-    document.getElementById('chain-fav-pct').textContent=murFavPct;
-  }
-  var stepEff=hasMur?3:2;
-  var stepGust=stepEff+1;
-  document.getElementById('chain-step-eff').textContent=stepEff;
-  document.getElementById('chain-step-gust').textContent=stepGust;
+  lastRealKwh=hourlyAnnualNetKwh;
+  lastAvgKwh=simpleAnnualNetKwh;
+  window.lastProductionSnapshot={
+    turbines:N,height:h,efficiency:eff,
+    productiveHours:totalH/simTotalYears,
+    baseGrossKwh:baseAnnualGrossKwh,
+    grossKwh:hourlyAnnualGrossKwh,
+    netKwh:hourlyAnnualNetKwh,
+    simpleNetKwh:simpleAnnualNetKwh,
+    wallCoefficient:isWall&&totalBaseWh>0?totalAdjustedWh/totalBaseWh:1,
+    gustCoefficient:gustBonusCoeff
+  };
+
+  document.getElementById('prod-chain').style.display='block';
+  document.getElementById('sk-real').textContent=fmtKwh(hourlyAnnualGrossKwh);
+  document.getElementById('chain-step-eff').textContent='2';
   document.getElementById('sk-eff-label').textContent=Math.round(eff*100);
-  document.getElementById('sk-net').textContent=fmt(netTot);
+  document.getElementById('sk-net').textContent=fmtKwh(hourlyAnnualNetKwh);
+  document.getElementById('sk-finale').textContent=fmt(hourlyAnnualNetKwh);
+  document.getElementById('sk-ref-only').textContent='Estimation mensuelle nette : '+fmtKwh(simpleAnnualNetKwh);
 
-  /* Bonus gust dans chaîne */
-  var gustRow=document.getElementById('chain-gust-row');
-  if(gustRow&&gustMedianRatio){
-    gustRow.style.display='flex';
-    var gcls=GUST_CLASSES.find(function(x){return gustMedianRatio<x.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
-    document.getElementById('chain-gust-type').textContent=gcls.label+' ('+gcls.bLabel+')';
-    document.getElementById('gust-ratio-chain').textContent='×'+gustBonusCoeff.toFixed(2);
-    document.getElementById('chain-gust-bonus').textContent='+'+fmt(finalProd-netTot);
-  }
-  document.getElementById('sk-finale').textContent=fmt(finalProd);
-  document.getElementById('sk-ref-only').textContent='Réf. sans bonus : '+fmt(netTot)+' kWh/an';
+  var annualHours=Math.round(totalH/simTotalYears);
+  document.getElementById('sk-hours').textContent=annualHours.toLocaleString('fr-FR');
+  document.getElementById('sk-hours-kpi').textContent=annualHours.toLocaleString('fr-FR');
+  document.getElementById('sk-perturbine').textContent=fmt(hourlyAnnualNetKwh/N);
+  document.getElementById('sk-height-label').textContent=INSTALL_H+' m';
 
-  /* KPIs compacts */
-  document.getElementById('sk-hours').textContent=Math.round(totalH/simTotalYears).toLocaleString('fr-FR');
-  var skHkpi=document.getElementById('sk-hours-kpi');
-  if(skHkpi)skHkpi.textContent=Math.round(totalH/simTotalYears).toLocaleString('fr-FR');
-  document.getElementById('sk-permur').textContent=fmt(hourlyAnnualKwh/N*18);
-  var skhL=document.getElementById('sk-height-label');if(skhL)skhL.textContent=INSTALL_H+' m';
-
-  /* ── Tableau mensuel ── */
   var tbody=document.getElementById('prod-tbody');
   tbody.innerHTML='';
-  for(var m=0;m<12;m++){
-    var mH=Math.round(monthH[m]/simTotalYears);
-    var vhAvg=monthAvgVh[m];
-    var gain=simpleMonthKwh[m]>0?((hourlyMonthKwh[m]-simpleMonthKwh[m])/simpleMonthKwh[m]*100):0;
+  for(var month=0;month<12;month++){
+    var monthHours=Math.round(monthH[month]/simTotalYears);
+    var simpleValue=simpleMonthNetKwh[month];
+    var hourlyValue=hourlyMonthNetKwh[month];
+    var gap=simpleValue>0?((hourlyValue-simpleValue)/simpleValue*100):0;
     var tr=document.createElement('tr');
-    tr.innerHTML='<td class="td-month">'+SIM_MONTHS[m]+'</td>'
-      +'<td class="td-avg">'+mH+'</td>'
-      +'<td class="td-avg">'+vhAvg.toFixed(1)+'</td>'
-      +'<td class="td-avg">'+fmt(simpleMonthKwh[m])+'</td>'
-      +'<td class="td-real">'+fmt(hourlyMonthKwh[m])+'</td>'
-      +'<td class="td-bonus">'+(gain>=0?'+':'')+gain.toFixed(1)+'%</td>';
+    tr.innerHTML='<td class="td-month">'+SIM_MONTHS[month]+'</td>'
+      +'<td>'+monthHours+'</td>'
+      +'<td>'+monthAvgVh[month].toFixed(1)+' m/s</td>'
+      +'<td>'+fmt(simpleValue)+'</td>'
+      +'<td class="td-real">'+fmt(hourlyValue)+'</td>'
+      +'<td class="td-bonus">'+(gap>=0?'+':'')+gap.toFixed(1)+'%</td>';
     tbody.appendChild(tr);
   }
-  document.getElementById('ft-avg').textContent=Math.round(totalH/simTotalYears)+' h';
-  document.getElementById('ft-avg2').textContent='—';
-  document.getElementById('ft-simple').textContent=fmt(simpleAnnualKwh);
-  document.getElementById('ft-real').textContent=fmt(hourlyAnnualKwh);
-  document.getElementById('ft-bonus').textContent=(gainAnnual>=0?'+':'')+gainAnnual.toFixed(1)+'%';
+  document.getElementById('ft-avg').textContent=annualHours.toLocaleString('fr-FR')+' h';
+  document.getElementById('ft-avg2').textContent=totalH>0?(totalProductiveV/totalH).toFixed(1)+' m/s':'—';
+  document.getElementById('ft-simple').textContent=fmt(simpleAnnualNetKwh);
+  document.getElementById('ft-real').textContent=fmt(hourlyAnnualNetKwh);
+  document.getElementById('ft-bonus').textContent=(annualGap>=0?'+':'')+annualGap.toFixed(1)+'%';
 
   computeROI();
-  computeMurGains();
-  /* updateGustROI removed - section hidden */
-}
-
-/* ── Gains mur Philéole ──────────────────────────────────────── */
-function angularDiff(a, b){
-  /* Différence angulaire minimale entre deux directions (0-360°) */
-  var d=Math.abs(((a-b)+360)%360);
-  return d>180?360-d:d;
-}
-
-function computeMurGains(){
-  if(!window.simHours||window.simDomDir===undefined)return;
-  var hrs=window.simHours;
-  var domDir=window.simDomDir; /* direction dominante en degrés */
-
-  var murWh=0;         /* Wh pour 1 mur (18 turbines) avec gains */
-  var baseWh18=0;      /* Wh pour 18 turbines isolées (sans gains) */
-  var favH=0;          /* heures en secteur favorable */
-  var totalProdH=0;    /* heures avec production (v≥2) */
-
-  for(var i=0;i<hrs.length;i++){
-    var v10=hrs[i].s, v100=hrs[i].s100||hrs[i].s;
-    var vh=interpHeight(v10,v100,INSTALL_H);
-    var p=lookupPower(vh); /* W par turbine */
-    if(p<=0)continue;
-
-    totalProdH++;
-    var p18=p*18; /* W pour 18 turbines isolées */
-    baseWh18+=p18;
-
-    /* Gain selon direction */
-    var dir=hrs[i].d||0;
-    var inFav=angularDiff(dir,domDir)<=MUR_FAVORABLE_ANGLE;
-    if(inFav){ favH++; murWh+=p18*MUR_GAIN_FAVORABLE; }
-    else      { murWh+=p18; }
-  }
-
-  /* Moyenner sur 5 ans → kWh/an */
-  var murKwh=murWh/simTotalYears/1000;
-  var baseKwh18=baseWh18/simTotalYears/1000;
-  var gainKwh=murKwh-baseKwh18;
-  var favPct=totalProdH>0?(favH/totalProdH*100):0;
-  var favAnnualH=favH/simTotalYears;
-
-  /* Affichage */
-  document.getElementById('mur-prod').textContent=fmt(murKwh);
-  document.getElementById('mur-gain').textContent=fmt(gainKwh);
-  document.getElementById('mur-pct').textContent=favPct.toFixed(0);
-  document.getElementById('mur-fav-h').textContent=Math.round(favAnnualH).toLocaleString('fr-FR');
-  document.getElementById('mur-section').style.display='block';
 }
 var roiChartInst=null;
 var lastRealKwh=0, lastAvgKwh=0;
 
-function onRoiChange(){ computeROI(); if(window.simGusts&&gustMedianRatio) updateGustROI(); }
+function onRoiChange(){ computeROI(); }
 
 function fmtEur(v){
   if(v>=1000000) return (v/1000000).toFixed(2)+' M€';
@@ -1348,17 +1300,7 @@ function computeROI(){
     if(eco<=0){document.getElementById(valId).textContent='∞';document.getElementById(subId).textContent='Production insuffisante';return;}
     var yrs=cost/eco;
     document.getElementById(valId).textContent=roiLabel(yrs);
-    if(valId==='rb-real'){
-      var ref=window.lastNetRef||0;
-      var refEco=ref*priceKwh;
-      var sub='soit '+Math.round(yrs*12)+' mois';
-      if(refEco>0&&ref!==eco/priceKwh){
-        sub+=' · Référence sans bonus : '+roiLabel(cost/refEco);
-      }
-      document.getElementById(subId).textContent=sub;
-    } else {
-      document.getElementById(subId).textContent='soit '+Math.round(yrs*12)+' mois';
-    }
+    document.getElementById(subId).textContent='soit '+Math.round(yrs*12)+' mois';
   }
   setRoi('rb-avg','rb-avg-sub',ecoAvg);
   setRoi('rb-real','rb-real-sub',ecoReal);
@@ -1421,120 +1363,43 @@ function drawROI(cost,ecoAvg,ecoReal){
   });
 }
 
-
-
-/* ── Bonus de rafales ────────────────────────────────────────── */
 async function fetchGustData(lat,lon){
   try{
     var url='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)
       +'&start_date=2019-01-01&end_date=2023-12-31&hourly=wind_gusts_10m&wind_speed_unit=ms&timezone=UTC&models=era5';
-    var res=await fetch(url);
-    if(!res.ok)return;
-    var data=await res.json();
-    var gusts=(data.hourly&&data.hourly.wind_gusts_10m)||[];
-    /* Stocker pour calcul */
-    window.simGusts=gusts;
-    computeGustTypology();
-  }catch(e){ console.error('Erreur données rafales:',e); }
-}
-
-function computeGustTypology(){
-  if(!window.simHours||!window.simGusts)return;
-  var hrs=window.simHours, gusts=window.simGusts;
-  /* Reconstituer les ratios gust/mean pour heures productives */
-  /* simHours est filtré (v≥2), gusts est le tableau brut complet.
-     On reconstruit l'index brut à partir de la longueur ERA5 = 5×8760 */
-  var ratios=[];
-  /* Parcourir les données brutes — simHours ne garde pas l'index brut */
-  /* On reconstruit : pour chaque heure brute où sp≥2, calculer ratio */
-  /* Note : simHours stocke s (vitesse) mais pas l'index. On utilise gusts.length */
-  /* Solution : on itère sur gusts et utilise simHours comme référence de vitesse */
-  /* Plus simple : recalculer depuis les données brutes — mais on n'a pas sp brut */
-  /* Fallback propre : calculer ratio sur simHours dont on a la vitesse */
-  /* gust index i correspond à simHours hour si les deux tableaux sont alignés — */
-  /* ils ne le sont pas (simHours filtre les null). On utilise une heuristique : */
-  /* ratio médian approximé sur simHours avec gust[i_brut] */
-  /* Pour garantir l'alignement, on refait un scan sur window.simHoursRaw si dispo */
-  if(window.simHoursRaw){
-    window.simHoursRaw.forEach(function(h,i){
-      if(!h||h.s<2)return;
-      var g=gusts[i];
-      if(g==null||g<=0)return;
-      ratios.push(g/h.s);
-    });
-  } else {
-    /* Fallback : ratio sur simHours avec gusts alignés par position */
-    hrs.forEach(function(h,i){
-      var g=gusts[i];
-      if(g==null||g<=0)return;
-      ratios.push(g/h.s);
-    });
+    var response=await fetch(url);
+    if(!response.ok)return;
+    var data=await response.json();
+    window.simGusts=(data.hourly&&data.hourly.wind_gusts_10m)||[];
+    computeGustCoefficient();
+  }catch(error){
+    console.warn('Coefficient de variabilité indisponible :',error);
   }
-  if(ratios.length===0)return;
-  /* Médiane */
-  ratios.sort(function(a,b){return a-b;});
-  var med=ratios[Math.floor(ratios.length/2)];
-  gustMedianRatio=med;
-  /* Classification */
-  var cls=GUST_CLASSES.find(function(cc){return med<cc.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
-  gustBonusCoeff=cls.bonus;
-  /* Affichage typology section ROI */
-  document.getElementById('gust-icon').textContent=cls.icon;
-  document.getElementById('gust-label').textContent=cls.icon+' '+cls.label;
-  document.getElementById('gust-ratio').textContent=med.toFixed(2);
-  document.getElementById('gust-bonus-label').textContent='+'+Math.round((cls.bonus-1)*100)+'% (×'+cls.bonus.toFixed(2)+')';
-  /* Affichage typology section 1 */
-  var s1typ=document.getElementById('s1-wind-type');
-  var s1rat=document.getElementById('s1-gust-ratio');
-  var s1bon=document.getElementById('s1-gust-bonus');
-  var s1card=document.getElementById('s1-typology-card');
-  if(s1typ) s1typ.textContent=cls.icon+' '+cls.label;
-  if(s1rat) s1rat.textContent=med.toFixed(2);
-  if(s1bon) s1bon.textContent='+'+Math.round((cls.bonus-1)*100)+'%';
-  if(s1card) s1card.style.display='block';
-  /* IMPORTANT : recalculer la production avec le nouveau coefficient */
-  if(window.simHours) computeProduction(getNTurbines());
-  updateGustROI();
-  document.getElementById('gust-section').style.display='block';
 }
 
-function updateGustROI(){
-  if(!gustMedianRatio||lastRealKwh===0)return;
-  var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.22;
-  var refKwh=window.lastNetRef||lastRealKwh/gustBonusCoeff;
-  var bonusKwh=refKwh*gustBonusCoeff; /* = lastRealKwh */
-  var deltaKwh=bonusKwh-refKwh;
-  /* Affichage delta */
-  var el=document.getElementById('gust-ref-prod');
-  if(el)el.textContent=Math.round(refKwh).toLocaleString('fr-FR');
-  el=document.getElementById('gust-prod');
-  if(el)el.textContent=Math.round(bonusKwh).toLocaleString('fr-FR');
-  el=document.getElementById('gust-eco');
-  if(el)el.textContent='+'+Math.round(deltaKwh).toLocaleString('fr-FR');
-  /* ids cachés — pas nécessaires mais conservés */
+function computeGustCoefficient(){
+  if(!window.simHoursRaw||!window.simGusts)return;
+  var ratios=[];
+  window.simHoursRaw.forEach(function(hour,index){
+    if(!hour||hour.s<PHY_CUT)return;
+    var gust=window.simGusts[index];
+    if(gust==null||gust<=0)return;
+    var ratio=gust/hour.s;
+    if(isFinite(ratio)&&ratio>0)ratios.push(ratio);
+  });
+  if(!ratios.length)return;
+  ratios.sort(function(a,b){return a-b;});
+  gustMedianRatio=ratios[Math.floor(ratios.length/2)];
+  var gustClass=GUST_CLASSES.find(function(item){return gustMedianRatio<item.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
+  gustBonusCoeff=gustClass.bonus;
+  computeProduction(getNTurbines());
 }
+
+
 
 /* Boot */
 ainp.value='';
 setHeight(10); /* init boutons hauteur */
 </script>
-<!-- Gust stubs for JS compat -->
-<span id="gust-section" style="display:none;"></span>
-<span id="gust-icon" style="display:none;"></span>
-<span id="gust-label" style="display:none;"></span>
-<span id="gust-ratio" style="display:none;"></span>
-<span id="gust-bonus-label" style="display:none;"></span>
-<span id="gust-ref-prod" style="display:none;"></span>
-<span id="gust-prod" style="display:none;"></span>
-<span id="gust-eco" style="display:none;"></span>
-<span id="gust-roi" style="display:none;"></span>
-<span id="gust-ref-eco" style="display:none;"></span>
-<span id="gust-ref-roi" style="display:none;"></span>
-<!-- Mur stubs for JS compat -->
-<span id="mur-section" style="display:none;"></span>
-<span id="mur-prod" style="display:none;"></span>
-<span id="mur-gain" style="display:none;"></span>
-<span id="mur-pct" style="display:none;"></span>
-<span id="mur-fav-h" style="display:none;"></span>
 </body>
 </html>
