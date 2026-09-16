@@ -535,6 +535,50 @@ table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
     </div>
   </div>
 
+  <!-- ── Gains mur Philéole ─────────────────────────────────────── -->
+  <div id="mur-section" style="display:none;margin-top:1.25rem;background:var(--card);border-radius:var(--r-lg);border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#0a1f0e 0%,#1a4d24 55%,#2d7a3a 100%);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:22px;">🏗️</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#fff;letter-spacing:-.2px;">Production mur Philéole — gains de structure</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;">Organisation ×1,17 · Déflecteurs ×1,15 · Actifs dans le secteur ±45° (vent dominant)</div>
+      </div>
+    </div>
+    <div style="padding:1.25rem;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:.875rem;">
+        <div class="sk" style="--sk-color:#1a9469;">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Production / mur · avec gains</div>
+          <div class="sk-val" id="mur-prod">—</div>
+          <div class="sk-unit">kWh / an / mur</div>
+        </div>
+        <div class="sk" style="--sk-color:#1a9469;">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Gain vs 18 turbines isolées</div>
+          <div class="sk-val" id="mur-gain">—</div>
+          <div class="sk-unit">kWh suppl. / an / mur</div>
+        </div>
+        <div class="sk" style="--sk-color:#b45309;">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Vent favorable sur site</div>
+          <div class="sk-val" id="mur-pct">—</div>
+          <div class="sk-unit">% du temps dans ±45°</div>
+        </div>
+        <div class="sk" style="--sk-color:#b45309;">
+          <div class="sk-accent"></div>
+          <div class="sk-lbl">Heures favorables</div>
+          <div class="sk-val" id="mur-fav-h">—</div>
+          <div class="sk-unit">h / an</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;padding:.625rem .875rem;background:var(--bg);border-radius:var(--r-sm);">
+        Calculé heure par heure depuis la direction ERA5. <strong>Vent favorable</strong> = direction dans ±45° autour de la direction dominante ERA5 du site.
+        Multiplicateur en vent favorable : ×<strong>1,3455</strong> (structure ×1,17 × déflecteurs ×1,15). Vent hors secteur : ×1,0.
+        Ces gains s'appliquent à un mur complet de 18 turbines organisées — pas à des turbines isolées.
+      </div>
+    </div>
+  </div>
+
 
     <!-- ── ROI ───────────────────────────────────────────────── -->
   <div class="roi-section" id="roi-section">
@@ -639,6 +683,11 @@ var PHY_CUT=2;              /* m/s seuil de démarrage */
 var PHY_A=0.297;            /* m² surface — référence */
 var INSTALL_H=10;           /* hauteur d'installation (m), défaut 10 */
 var EFF_FACTOR=0.80;        /* coefficient de rendement global, hypothèse */
+/* ── Gains mur Philéole ───────────────────────────────────── */
+var MUR_GAIN_STRUCT=1.17;     /* gain organisation des éoliennes entre elles */
+var MUR_GAIN_DEFECT=1.15;     /* gain déflecteurs haut/bas */
+var MUR_GAIN_FAVORABLE=MUR_GAIN_STRUCT*MUR_GAIN_DEFECT; /* = 1.3455 */
+var MUR_FAVORABLE_ANGLE=45;   /* ±45° autour de la direction dominante */
 var simMonthlyAvg=null, simTotalYears=1;
 var SIM_A_UNIT=PHY_A;
 
@@ -763,7 +812,7 @@ async function runAnalysis(lat,lon,dn){
         var mo_=parseInt(tm[i].slice(5,7))-1;
         var v100i=sp100[i]||sp[i]; /* fallback à v10 si 100m absent */
         vd.push({s:sp[i],d:di[i],m:mo_});
-        window.simHours.push({s:sp[i],s100:v100i,m:mo_});
+        window.simHours.push({s:sp[i],s100:v100i,d:di[i],m:mo_});
       }
     }
 
@@ -776,6 +825,7 @@ async function runAnalysis(lat,lon,dn){
     var scts=Array(16).fill(0), ssps=Array(16).fill(0);
     vd.forEach(function(x){var s=d2s(x.d);scts[s]++;ssps[s]+=x.s;});
     var ds=scts.indexOf(Math.max.apply(null,scts));
+    window.simDomDir=ds*22.5; /* direction dominante en degrés */
 
     var mo=Array(12).fill(null).map(function(){return{s:0,n:0};});
     vd.forEach(function(x){mo[x.m].s+=x.s;mo[x.m].n++;});
@@ -849,6 +899,7 @@ async function runAnalysis(lat,lon,dn){
     computeProduction(initT);
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
+    document.getElementById('mur-section').style.display='none';
 
 
 
@@ -1124,9 +1175,57 @@ function computeProduction(N){
   document.getElementById('ft-bonus').textContent=(gainAnnual>=0?'+':'')+gainAnnual.toFixed(1)+'%';
 
   computeROI();
+  computeMurGains();
 }
 
-/* ── ROI ─────────────────────────────────────────────────── */
+/* ── Gains mur Philéole ──────────────────────────────────────── */
+function angularDiff(a, b){
+  /* Différence angulaire minimale entre deux directions (0-360°) */
+  var d=Math.abs(((a-b)+360)%360);
+  return d>180?360-d:d;
+}
+
+function computeMurGains(){
+  if(!window.simHours||window.simDomDir===undefined)return;
+  var hrs=window.simHours;
+  var domDir=window.simDomDir; /* direction dominante en degrés */
+
+  var murWh=0;         /* Wh pour 1 mur (18 turbines) avec gains */
+  var baseWh18=0;      /* Wh pour 18 turbines isolées (sans gains) */
+  var favH=0;          /* heures en secteur favorable */
+  var totalProdH=0;    /* heures avec production (v≥2) */
+
+  for(var i=0;i<hrs.length;i++){
+    var v10=hrs[i].s, v100=hrs[i].s100||hrs[i].s;
+    var vh=interpHeight(v10,v100,INSTALL_H);
+    var p=lookupPower(vh); /* W par turbine */
+    if(p<=0)continue;
+
+    totalProdH++;
+    var p18=p*18; /* W pour 18 turbines isolées */
+    baseWh18+=p18;
+
+    /* Gain selon direction */
+    var dir=hrs[i].d||0;
+    var inFav=angularDiff(dir,domDir)<=MUR_FAVORABLE_ANGLE;
+    if(inFav){ favH++; murWh+=p18*MUR_GAIN_FAVORABLE; }
+    else      { murWh+=p18; }
+  }
+
+  /* Moyenner sur 5 ans → kWh/an */
+  var murKwh=murWh/simTotalYears/1000;
+  var baseKwh18=baseWh18/simTotalYears/1000;
+  var gainKwh=murKwh-baseKwh18;
+  var favPct=totalProdH>0?(favH/totalProdH*100):0;
+  var favAnnualH=favH/simTotalYears;
+
+  /* Affichage */
+  document.getElementById('mur-prod').textContent=fmt(murKwh);
+  document.getElementById('mur-gain').textContent=fmt(gainKwh);
+  document.getElementById('mur-pct').textContent=favPct.toFixed(0);
+  document.getElementById('mur-fav-h').textContent=Math.round(favAnnualH).toLocaleString('fr-FR');
+  document.getElementById('mur-section').style.display='block';
+}
 var roiChartInst=null;
 var lastRealKwh=0, lastAvgKwh=0;
 
