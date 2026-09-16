@@ -2,773 +2,599 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Analyseur Éolien</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analyseur de potentiel éolien — Philéole</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+*{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --navy:#0B2340;--blue:#1A5FA8;--blue-hover:#134B87;--blue-light:#EBF2FB;
-  --teal:#1A9469;--teal-light:#E5F5EF;
-  --amber:#B45309;--amber-light:#FEF3C7;
-  --purple:#6D28D9;--purple-light:#F5F3FF;
-  --red:#DC2626;
-  --bg:#EDECE6;--card:#FFFFFF;
-  --text:#0F172A;--muted:#64748B;--subtle:#94A3B8;
-  --border:rgba(0,0,0,0.09);--border-med:rgba(0,0,0,0.14);
-  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
-  --sh-sm:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
-  --sh-md:0 4px 16px rgba(0,0,0,.09),0 2px 4px rgba(0,0,0,.05);
-  --sh-lg:0 8px 32px rgba(0,0,0,.10),0 4px 8px rgba(0,0,0,.06);
+  --navy:#0B2340;--blue:#1A5FA8;--blue-light:#EBF2FB;
+  --teal:#1A9469;--purple:#6D28D9;--amber:#B45309;
+  --red:#DC2626;--white:#fff;
+  --bg:#F5F5F3;--card:#FFFFFF;--text:#1A1A18;--muted:#8C8C7A;
+  --border:rgba(0,0,0,.1);--border-med:rgba(0,0,0,.18);
+  --r-sm:6px;--r-md:10px;--r-lg:14px;
+  --sh:0 1px 4px rgba(0,0,0,.08);
+  --sh-md:0 2px 10px rgba(0,0,0,.1);
 }
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;
-  background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5;
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.4;}
+
+/* ── Header ── */
+.app-header{
+  background:var(--navy);padding:.875rem 1.25rem;
+  display:flex;align-items:center;gap:.75rem;position:sticky;top:0;z-index:200;
+}
+.app-logo{font-size:15px;font-weight:800;color:#fff;white-space:nowrap;flex-shrink:0;}
+.app-logo span{font-weight:400;color:rgba(255,255,255,.55);margin-left:4px;font-size:12px;}
+.search-wrap{flex:1;display:flex;gap:.5rem;min-width:0;}
+.search-box{flex:1;position:relative;}
+.search-box input{
+  width:100%;padding:.625rem .625rem .625rem 2.25rem;
+  border:none;border-radius:var(--r-sm);
+  font-size:14px;background:#fff;color:var(--text);outline:none;
+}
+.search-box::before{
+  content:"🔍";position:absolute;left:.625rem;top:50%;transform:translateY(-50%);
+  font-size:13px;pointer-events:none;
+}
+.btn-analyse{
+  padding:.625rem 1.25rem;background:var(--blue);color:#fff;
+  border:none;border-radius:var(--r-sm);font-size:14px;font-weight:700;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;
+}
+.btn-analyse:hover{background:#1450a0;}
+#sugg{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#fff;border-radius:var(--r-md);box-shadow:var(--sh-md);
+  z-index:300;overflow:hidden;
+}
+.sugg-item{padding:.75rem 1rem;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);}
+.sugg-item:hover{background:var(--bg);}
+#st{padding:.625rem 1.25rem;font-size:12px;color:var(--blue);background:rgba(26,95,168,.08);display:none;}
+
+/* ── Section headers ── */
+.sec-header{
+  display:flex;align-items:center;gap:.75rem;
+  background:var(--navy);color:#fff;
+  padding:.875rem 1.25rem;border-radius:var(--r-md) var(--r-md) 0 0;
+}
+.sec-num{
+  width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:800;flex-shrink:0;
+}
+.sec-title{font-size:15px;font-weight:700;}
+.sec-body{background:var(--card);border-radius:0 0 var(--r-md) var(--r-md);padding:1.25rem;}
+
+/* ── App layout ── */
+.app{max-width:900px;margin:0 auto;padding:.875rem .875rem 2rem;}
+
+/* ── Section 1 : Potentiel ── */
+.pot-layout{display:grid;grid-template-columns:1fr;gap:.75rem;}
+@media(min-width:640px){.pot-layout{grid-template-columns:1fr 1fr;align-items:start;}}
+.map-wrap{position:relative;border-radius:var(--r-md);overflow:hidden;}
+#map{height:280px;width:100%;background:#e8eaf0;}
+@media(min-width:640px){#map{height:320px;}}
+#rose-canvas{
+  position:absolute;bottom:12px;left:12px;
+  width:120px;height:120px;pointer-events:none;
+  border-radius:50%;
+}
+.map-label{
+  position:absolute;bottom:10px;right:10px;
+  background:rgba(255,255,255,.85);font-size:10px;
+  padding:3px 8px;border-radius:4px;color:var(--muted);
+}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
+.stat-card{background:var(--card);border-radius:var(--r-md);padding:.875rem;border:1px solid var(--border);box-shadow:var(--sh);}
+.stat-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;}
+.stat-val{font-size:22px;font-weight:800;color:var(--text);}
+.stat-val.lg{font-size:18px;}
+.mch-wrap{background:var(--card);border-radius:var(--r-md);padding:.875rem;border:1px solid var(--border);grid-column:1/-1;}
+.mch-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;}
+#mch{max-height:110px;}
+
+/* Typology & sector cards */
+.s1-cards{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem;}
+@media(max-width:480px){.s1-cards{grid-template-columns:1fr;}}
+.s1-card{background:var(--card);border-radius:var(--r-md);padding:.875rem 1rem;border:1px solid var(--border);box-shadow:var(--sh);}
+.s1-card-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.375rem;}
+.s1-card-val{font-size:18px;font-weight:800;color:var(--text);}
+.s1-card-sub{font-size:11px;color:var(--muted);margin-top:.25rem;}
+.s1-badge{
+  float:right;background:rgba(26,148,105,.15);color:var(--teal);
+  font-size:12px;font-weight:700;padding:2px 8px;border-radius:20px;
+  margin-left:.5rem;
 }
 
-/* Header */
-.hdr{
-  background:linear-gradient(135deg,#081C35 0%,var(--navy) 40%,#1A3F6F 100%);
-  padding:1rem 1.25rem; display:flex; align-items:center; gap:12px;
+/* Collapsible detail */
+.detail-toggle{
+  display:flex;align-items:center;gap:.375rem;
+  font-size:13px;color:var(--blue);cursor:pointer;
+  padding:.625rem 0;border:none;background:none;font-weight:600;
 }
-.hdr-logo{
-  width:40px;height:40px;border-radius:10px;
-  background:rgba(255,255,255,.12);
-  display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
+.detail-toggle svg{transition:transform .2s;}
+.detail-toggle.open svg{transform:rotate(180deg);}
+.detail-content{display:none;padding-top:.5rem;}
+.detail-content.open{display:block;}
+
+/* ── Section 2 : Dispositif ── */
+.device-grid{display:grid;grid-template-columns:1fr;gap:.875rem;}
+@media(min-width:580px){.device-grid{grid-template-columns:1.4fr 1fr 0.8fr;}}
+.cfg-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.75rem;}
+.cfg-btn2{
+  padding:.625rem .25rem;border:2px solid var(--border-med);border-radius:var(--r-sm);
+  background:var(--card);color:var(--text);cursor:pointer;text-align:center;font-size:12px;
+  font-weight:600;transition:all .15s;
 }
-.hdr-title{color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;line-height:1.2;}
-.hdr-sub{color:rgba(255,255,255,.45);font-size:11px;margin-top:2px;letter-spacing:.2px;}
-
-/* Container */
-.wrap{max-width:1100px;margin:0 auto;padding:1.25rem 1rem 2rem;}
-
-/* Search */
-.search-block{margin-bottom:1rem;}
-.search-row{display:flex;gap:8px;}
-.sinput-wrap{flex:1;position:relative;}
-.sinput-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;width:16px;height:16px;}
-.sinput{
-  width:100%;padding:11px 14px 11px 38px;
-  border:1.5px solid var(--border-med);border-radius:var(--r-md);
-  font-size:14px;background:var(--card);color:var(--text);outline:none;
-  box-shadow:var(--sh-sm);transition:border-color .15s,box-shadow .15s;
-}
-.sinput:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,95,168,.13),var(--sh-sm);}
-.sbtn{
-  flex-shrink:0;padding:11px 20px;background:var(--blue);color:#fff;border:none;border-radius:var(--r-md);
-  font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;
-  box-shadow:var(--sh-sm);transition:background .15s,transform .1s;
-  display:flex;align-items:center;gap:7px;
-}
-.sbtn:hover{background:var(--blue-hover);}
-.sbtn:active{transform:scale(.97);}
-.sbtn svg{flex-shrink:0;}
-
-/* Autocomplete */
-.sugg-box{
-  display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
-  background:var(--card);border:1.5px solid var(--border-med);border-radius:var(--r-md);
-  z-index:9999;max-height:260px;overflow-y:auto;box-shadow:var(--sh-lg);
-}
-.si{display:flex;align-items:flex-start;gap:9px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;}
-.si:last-child{border-bottom:none;}
-.si:hover,.si:focus{background:var(--blue-light);}
-.si-pin{color:var(--muted);flex-shrink:0;margin-top:1px;width:14px;height:14px;}
-.si-main{font-size:13px;font-weight:500;color:var(--text);line-height:1.3;}
-.si-sub{font-size:11px;color:var(--muted);margin-top:1px;line-height:1.3;}
-
-/* Status */
-.status-bar{font-size:13px;color:var(--muted);min-height:18px;white-space:pre-line;margin-bottom:1rem;}
-
-/* Grid */
-.main-grid{display:grid;grid-template-columns:1fr;gap:1rem;}
-@media(min-width:780px){.main-grid{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:1.25rem;align-items:start;}}
-
-/* Map */
-.map-lbl{font-size:12px;color:var(--muted);margin-bottom:6px;min-height:16px;line-height:1.4;}
-.map-box{border-radius:var(--r-lg);overflow:hidden;border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);height:300px;}
-@media(min-width:780px){.map-box{height:440px;}}
-#map{height:100%;}
-
-/* Stats panel */
-.stats{display:none;}
-@media(min-width:780px){.stats{padding-top:22px;}}
-
-/* Metric cards */
-.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.875rem;}
-.mc{
-  background:var(--card);border-radius:var(--r-md);padding:.875rem 1rem;
-  border:1.5px solid var(--border);box-shadow:var(--sh-sm);position:relative;overflow:hidden;
-}
-.mc::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--blue));border-radius:3px 3px 0 0;}
-.mc-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
-.mc-val{font-size:22px;font-weight:800;color:var(--text);line-height:1;letter-spacing:-.5px;}
-
-/* Chart card */
-.chart-card{background:var(--card);border-radius:var(--r-md);padding:1rem;border:1.5px solid var(--border);box-shadow:var(--sh-sm);}
-.sec-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.75rem;}
-.chart-wrap{position:relative;height:180px;}
-.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:.75rem;}
-.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
-.ld{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
-
-/* Weibull */
-.weibull-row{margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border);}
-.wb-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px;}
-.wb-val{font-size:14px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
-
-/* Days section */
-.days-section{margin-top:.875rem;}
-.days-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
-.days-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.875rem;}
-.dc{
-  background:var(--card);border-radius:var(--r-md);padding:.875rem 1rem;
-  border:1.5px solid var(--border);box-shadow:var(--sh-sm);
-  position:relative;overflow:hidden;text-align:center;
-}
-.dc::before{
-  content:'';position:absolute;inset:0;opacity:.06;
-  background:var(--dc-color,var(--blue));
-}
-.dc-badge{
-  display:inline-flex;align-items:center;gap:4px;
-  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
-  color:var(--dc-color,var(--blue));margin-bottom:6px;
-}
-.dc-val{font-size:32px;font-weight:800;color:var(--text);letter-spacing:-1px;line-height:1;}
-.dc-unit{font-size:11px;color:var(--muted);margin-top:4px;}
-.dc-bar-bg{height:4px;background:var(--bg);border-radius:2px;margin-top:10px;overflow:hidden;}
-.dc-bar-fill{height:100%;border-radius:2px;background:var(--dc-color,var(--blue));transition:width .8s cubic-bezier(.4,0,.2,1);}
-.days-chart-card{background:var(--card);border-radius:var(--r-md);padding:1rem;border:1.5px solid var(--border);box-shadow:var(--sh-sm);}
-.days-chart-wrap{position:relative;height:150px;}
-
-/* Potential */
-.pot-card{
-  display:none;margin-top:1rem;padding:1rem 1.25rem;border-radius:var(--r-md);
-  border:1.5px solid var(--border);background:var(--card);box-shadow:var(--sh-sm);
-  display:none;align-items:flex-start;gap:12px;
-}
-.pot-icon{font-size:24px;flex-shrink:0;line-height:1;}
-.pot-head{font-size:13px;font-weight:700;margin-bottom:3px;}
-.pot-body{font-size:13px;color:var(--muted);line-height:1.6;}
-.pot-card.good{border-left:4px solid var(--teal);background:var(--teal-light);}
-.pot-card.good .pot-head{color:var(--teal);}
-.pot-card.mod{border-left:4px solid var(--amber);background:var(--amber-light);}
-.pot-card.mod .pot-head{color:var(--amber);}
-.pot-card.low{border-left:4px solid var(--muted);background:#F8F8F6;}
-.pot-card.low .pot-head{color:var(--muted);}
-.pot-card.exc{border-left:4px solid var(--purple);background:var(--purple-light);}
-.pot-card.exc .pot-head{color:var(--purple);}
-
-
-
-/* ── Simulator ────────────────────────────────────────────── */
-.sim-section{
-  display:none;margin-top:1.25rem;
-  background:var(--card);border-radius:var(--r-lg);
-  border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);overflow:hidden;
-}
-.sim-header{
-  background:linear-gradient(135deg,#081C35 0%,var(--navy) 55%,#1A3F6F 100%);
-  padding:1rem 1.25rem;display:flex;align-items:center;gap:12px;
-}
-.sim-header-icon{font-size:22px;}
-.sim-header-text{color:#fff;}
-.sim-header-title{font-size:14px;font-weight:700;letter-spacing:-.2px;}
-.sim-header-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;}
-.sim-body{padding:1.25rem;}
-
-/* Input controls */
-.sim-inputs{
-  display:grid;grid-template-columns:1fr 1fr;gap:.875rem;
-  margin-bottom:1.25rem;
-}
-@media(max-width:560px){.sim-inputs{grid-template-columns:1fr;}}
-.sim-input-block{
-  background:var(--bg);border-radius:var(--r-md);
-  padding:.875rem 1rem;display:flex;flex-direction:column;gap:.5rem;
-}
-.sim-input-label{font-size:12px;font-weight:700;color:var(--text);letter-spacing:-.1px;}
-.sim-input-sub{font-size:11px;color:var(--muted);line-height:1.4;}
-.sim-input-row{display:flex;align-items:center;gap:.625rem;margin-top:.25rem;}
-.sim-num{
-  width:80px;padding:7px 10px;
+.cfg-btn2:hover{border-color:var(--blue);color:var(--blue);}
+.cfg-btn2.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+.cfg-btn2 small{display:block;font-size:10px;font-weight:400;opacity:.7;margin-top:1px;}
+.inp-field{
   border:1.5px solid var(--border-med);border-radius:var(--r-sm);
-  font-size:18px;font-weight:800;color:var(--blue);text-align:center;
-  background:#fff;outline:none;
-  transition:border-color .15s,box-shadow .15s;
+  background:var(--card);font-size:15px;font-weight:700;color:var(--blue);
+  padding:.625rem .75rem;width:100%;outline:none;
 }
-.sim-num:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,95,168,.12);}
-.sim-num-unit{font-size:12px;color:var(--muted);font-weight:500;}
-.sim-derived{font-size:11px;color:var(--muted);margin-top:2px;}
-.sim-derived strong{color:var(--text);font-weight:700;}
-
-/* KPIs */
-.sim-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:1.25rem;}
-.sk{border-radius:var(--r-md);padding:.875rem 1rem;position:relative;overflow:hidden;border:1.5px solid var(--border);}
-.sk-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0;background:var(--sk-color,var(--blue));}
-.sk-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:5px;}
-.sk-val{font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1;}
-.sk-unit{font-size:11px;color:var(--muted);margin-top:3px;}
-
-/* Production table */
-.prod-table-wrap{overflow-x:auto;border-radius:var(--r-md);border:1.5px solid var(--border);margin-bottom:1rem;}
-table.prod-table{width:100%;border-collapse:collapse;font-size:13px;}
-table.prod-table th{
-  background:var(--navy);color:rgba(255,255,255,.9);
-  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-  padding:.6rem .875rem;text-align:left;white-space:nowrap;
-}
-table.prod-table th:not(:first-child){text-align:right;}
-table.prod-table td{
-  padding:.55rem .875rem;border-bottom:1px solid var(--border);
-  color:var(--text);white-space:nowrap;
-}
-table.prod-table td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;font-weight:500;}
-table.prod-table tr:last-child td{border-bottom:none;}
-table.prod-table tr:nth-child(even) td{background:rgba(0,0,0,.018);}
-table.prod-table tr:hover td{background:var(--blue-light);}
-table.prod-table .td-month{font-weight:600;color:var(--text);}
-table.prod-table .td-avg{color:var(--muted);}
-table.prod-table .td-real{color:var(--blue);}
-table.prod-table .td-bonus{color:var(--teal);font-size:11px;}
-table.prod-table tfoot td{
-  background:var(--navy);color:#fff;font-weight:800;
-  font-size:13px;border-bottom:none;
-}
-table.prod-table tfoot td:first-child{font-size:11px;text-transform:uppercase;letter-spacing:.4px;opacity:.75;}
-table.prod-table tfoot .td-real{color:#93C5FD;}
-table.prod-table tfoot .td-bonus{color:#6EE7B7;font-size:12px;}
-
-/* Note */
-.sim-note{
-  padding:.75rem 1rem;background:var(--blue-light);
-  border-radius:var(--r-md);font-size:12px;color:#1e3a5f;line-height:1.6;
-}
-.sim-note strong{font-weight:700;}
-.h-btn{
-  padding:4px 10px;font-size:11px;font-weight:600;
-  border:1.5px solid var(--border-med);border-radius:6px;
+.inp-field:focus{border-color:var(--blue);}
+.field-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.375rem;}
+.field-sub{font-size:11px;color:var(--muted);margin-top:.375rem;}
+.h-btns{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:.5rem;}
+.hb{
+  padding:.375rem .625rem;font-size:11px;font-weight:700;
+  border:1.5px solid var(--border-med);border-radius:var(--r-sm);
   background:var(--card);color:var(--text);cursor:pointer;
-  transition:background .12s,color .12s;
 }
-.h-btn:hover,.h-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-.cfg-btn{
-  padding:.75rem .5rem;border:2px solid var(--border-med);border-radius:var(--r-md);
-  background:var(--card);color:var(--text);cursor:pointer;text-align:center;
-  transition:all .15s;width:100%;
-}
-.cfg-btn:hover{border-color:var(--blue);color:var(--blue);}
-.cfg-btn.active-cfg{border-color:var(--blue);background:var(--blue);color:#fff;}
+.hb.active,.hb:hover{background:var(--navy);color:#fff;border-color:var(--navy);}
 
+/* ── Section 3 : Production ── */
+.prod-steps{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.875rem;}
+.prod-step{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.75rem .875rem;background:var(--bg);border-radius:var(--r-sm);
+}
+.prod-step.bonus{background:#f0fdf8;}
+.step-num{
+  width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;flex-shrink:0;
+}
+.step-info{flex:1;min-width:0;}
+.step-title{font-size:13px;font-weight:700;color:var(--text);}
+.step-sub{font-size:11px;color:var(--muted);}
+.step-val{font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;}
+.step-val.plus{color:var(--teal);}
+.prod-finale{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.875rem 1rem;background:var(--navy);border-radius:var(--r-sm);
+  margin-bottom:.875rem;
+}
+.prod-finale-lbl{font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.3px;}
+.prod-finale-val{font-size:22px;font-weight:900;color:#fff;}
+.prod-ref{font-size:11px;color:var(--muted);text-align:right;}
 
-/* ── ROI ──────────────────────────────────────────────────── */
-.roi-section{
-  display:none;margin-top:1.25rem;
-  background:var(--card);border-radius:var(--r-lg);
-  border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);overflow:hidden;
+/* ── Section 4 : ROI ── */
+.sec-header.purple{background:linear-gradient(135deg,#5b21b6,#6d28d9);}
+.roi-fields{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.875rem;}
+@media(min-width:560px){.roi-fields{grid-template-columns:1fr 1fr 1fr;}}
+.roi-summary{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.875rem;}
+.roi-kpi{background:var(--bg);border-radius:var(--r-md);padding:.875rem;}
+.roi-kpi-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;}
+.roi-kpi-val{font-size:20px;font-weight:800;color:var(--text);}
+.roi-result{
+  background:linear-gradient(135deg,#5b21b6,#6d28d9);
+  border-radius:var(--r-md);padding:1.25rem;margin-bottom:.875rem;
 }
-.roi-header{
-  background:linear-gradient(135deg,#1a0533 0%,#3b0764 55%,#6d28d9 100%);
-  padding:1rem 1.25rem;display:flex;align-items:center;gap:12px;
+.roi-result-lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.375rem;}
+.roi-result-val{font-size:30px;font-weight:900;color:#fff;margin-bottom:.25rem;}
+.roi-result-ref{font-size:12px;color:rgba(255,255,255,.55);}
+.roi-chart-wrap{position:relative;height:160px;margin-bottom:.875rem;}
+.btn-cta{
+  width:100%;padding:1rem;background:var(--navy);color:#fff;
+  border:none;border-radius:var(--r-md);font-size:15px;font-weight:700;
+  cursor:pointer;text-align:center;margin-top:.5rem;
 }
-.roi-header-icon{font-size:22px;}
-.roi-header-text{color:#fff;}
-.roi-header-title{font-size:14px;font-weight:700;letter-spacing:-.2px;}
-.roi-header-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;}
-.roi-body{padding:1.25rem;}
-.roi-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.875rem;margin-bottom:1.25rem;}
-.roi-input-block{background:var(--bg);border-radius:var(--r-md);padding:.875rem 1rem;}
-.roi-input-label{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;}
-.roi-input-sub{font-size:11px;color:var(--muted);margin-bottom:.5rem;line-height:1.4;}
-.roi-input-row{display:flex;align-items:center;gap:.5rem;}
-.roi-num{
-  width:100px;padding:7px 10px;border:1.5px solid var(--border-med);border-radius:var(--r-sm);
-  font-size:17px;font-weight:800;color:#6d28d9;text-align:right;
-  background:#fff;outline:none;transition:border-color .15s,box-shadow .15s;
-}
-.roi-num:focus{border-color:#6d28d9;box-shadow:0 0 0 3px rgba(109,40,217,.12);}
-.roi-num-unit{font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap;}
-.roi-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:1.25rem;}
-.rk{border-radius:var(--r-md);padding:.875rem 1rem;position:relative;overflow:hidden;border:1.5px solid var(--border);}
-.rk-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0;background:var(--rk-color,#6d28d9);}
-.rk-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:5px;}
-.rk-val{font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1;}
-.rk-unit{font-size:11px;color:var(--muted);margin-top:3px;}
-.roi-badges{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;}
-.roi-badge{flex:1;min-width:160px;border-radius:var(--r-md);padding:1rem 1.25rem;border:1.5px solid var(--border);text-align:center;}
-.roi-badge-icon{font-size:24px;margin-bottom:4px;}
-.roi-badge-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;}
-.roi-badge-val{font-size:28px;font-weight:900;letter-spacing:-1px;line-height:1;}
-.roi-badge-sub{font-size:11px;color:var(--muted);margin-top:4px;}
-.roi-badge.avg-b{border-color:rgba(148,163,184,.4);background:#F8FAFC;}
-.roi-badge.avg-b .roi-badge-val{color:#64748B;}
-.roi-badge.real-b{border-color:rgba(26,95,168,.25);background:var(--blue-light);}
-.roi-badge.real-b .roi-badge-val{color:var(--blue);}
-.roi-chart-card{background:var(--card);border-radius:var(--r-md);padding:1rem;border:1.5px solid var(--border);box-shadow:var(--sh-sm);}
-.roi-chart-wrap{position:relative;height:260px;}
-.roi-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:.75rem;}
+.btn-cta:hover{background:#0a1a30;}
 
-.leaflet-popup-tip-container{display:none;}
-.leaflet-popup-content{margin:10px 14px!important;font-family:inherit!important;font-size:13px!important;line-height:1.7!important;}
-.wri{background:transparent!important;border:none!important;box-shadow:none!important;}
+/* ── Gust section ── */
+#gust-section{padding:.875rem;background:var(--bg);border-radius:var(--r-md);border:1px solid var(--border);margin-bottom:.875rem;display:none;}
+.gust-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.625rem;}
+.gust-delta{display:flex;gap:1rem;flex-wrap:wrap;align-items:center;font-size:12px;}
+
+/* ── Mur section ── */
+#mur-section{display:none;}
+.mur-inner{background:linear-gradient(135deg,#0a1f0e,#1a4d24);border-radius:var(--r-md) var(--r-md) 0 0;padding:.875rem 1.25rem;display:flex;align-items:center;gap:10px;}
+.mur-body{background:var(--card);border-radius:0 0 var(--r-md) var(--r-md);padding:1rem;border:1px solid #d1fae5;}
+.mur-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.5rem;}
+.mur-kpi{background:var(--bg);border-radius:var(--r-sm);padding:.625rem .875rem;}
+.mur-kpi-lbl{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:.25rem;}
+.mur-kpi-val{font-size:16px;font-weight:800;color:var(--text);}
+
+/* ── Potential card ── */
+#pot{
+  padding:.875rem;border-radius:var(--r-md);background:var(--teal);color:#fff;
+  font-size:13px;line-height:1.5;display:none;margin-top:.75rem;
+}
+#pot .pot-head{font-weight:700;margin-bottom:.25rem;font-size:14px;}
+
+/* ── Misc ── */
+.section-wrap{margin-bottom:1rem;border-radius:var(--r-md);overflow:hidden;box-shadow:var(--sh-md);}
+.wri{background:transparent!important;}
+#lloc{font-size:11px;color:var(--muted);padding:.375rem .875rem;display:none;}
 </style>
 </head>
 <body>
 
-<header class="hdr">
-  <div class="hdr-logo">💨</div>
-  <div>
-    <div class="hdr-title">Analyseur de potentiel éolien</div>
-    <div class="hdr-sub">ERA5 · OpenStreetMap · Open-Meteo — données horaires sur 5 ans</div>
-  </div>
-</header>
-
-<div class="wrap">
-
-  <div class="search-block">
-    <div class="search-row">
-      <div class="sinput-wrap">
-        <svg class="sinput-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M15 15l-2.5-2.5"/></svg>
-        <input type="text" id="addr" class="sinput" placeholder="Commune, adresse, lieu-dit…" autocomplete="off" aria-label="Adresse à analyser">
-        <div id="sugg" class="sugg-box" role="listbox" aria-label="Suggestions d'adresses"></div>
-      </div>
-      <button class="sbtn" onclick="doAnalysis()" aria-label="Lancer l'analyse">
-        <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
-        Analyser
-      </button>
+<!-- ── Header ─────────────────────────────────────────────── -->
+<div class="app-header">
+  <div class="app-logo">≈ Analyseur éolien<span>Philéole</span></div>
+  <div class="search-wrap">
+    <div class="search-box" style="position:relative;">
+      <input type="text" id="addr" placeholder="Adresse, ville…" autocomplete="off" oninput="onAddrInput()" onkeydown="onAddrKey(event)">
+      <div id="sugg"></div>
     </div>
+    <button class="btn-analyse" onclick="doAnalysis()">Analyser</button>
   </div>
+</div>
+<div id="st"></div>
+<div id="lloc"></div>
 
-  <div class="status-bar" id="st" role="status" aria-live="polite"></div>
+<div class="app">
 
-  <div class="main-grid">
-    <div>
-      <div class="map-lbl" id="lloc"></div>
-      <div class="map-box"><div id="map"></div></div>
-    </div>
-    <div class="stats" id="panel">
-      <div class="metrics">
-        <div class="mc" style="--accent:var(--blue)"><div class="mc-lbl">Vitesse moy.</div><div class="mc-val" id="v0">—</div></div>
-        <div class="mc" style="--accent:#64748B"><div class="mc-lbl">Vitesse max</div><div class="mc-val" id="v1">—</div></div>
-        <div class="mc" style="--accent:var(--teal)"><div class="mc-lbl">Dir. dominante</div><div class="mc-val" id="v2" style="font-size:28px;letter-spacing:0;">—</div></div>
-        <div class="mc" style="--accent:var(--amber)"><div class="mc-lbl">Heures calmes</div><div class="mc-val" id="v3">—</div></div>
+<!-- ── Section 1 : Potentiel de la zone ──────────────────── -->
+<div class="section-wrap" id="panel" style="display:none;">
+  <div class="sec-header">
+    <div class="sec-num">1</div>
+    <div class="sec-title">Potentiel de la zone</div>
+  </div>
+  <div class="sec-body">
+    <!-- Map + stats layout -->
+    <div class="pot-layout">
+      <!-- Map with rose overlay -->
+      <div class="map-wrap">
+        <div id="map"></div>
+        <canvas id="rose-canvas" aria-label="Rose des vents"></canvas>
+        <div class="map-label">Carte & rose des vents</div>
       </div>
-      <div class="chart-card">
-        <div class="sec-lbl">Vitesse moyenne mensuelle</div>
-        <div class="chart-wrap"><canvas id="mch" role="img" aria-label="Histogramme de la vitesse du vent par mois">Chargement.</canvas></div>
-        <div class="legend">
-          <div class="li"><div class="ld" style="background:#4CAF50"></div>&lt; 3 m/s</div>
-          <div class="li"><div class="ld" style="background:#1976D2"></div>3–5 m/s</div>
-          <div class="li"><div class="ld" style="background:#7C3AED"></div>5–7 m/s</div>
-          <div class="li"><div class="ld" style="background:#DC2626"></div>&gt; 7 m/s</div>
-        </div>
-        <div class="weibull-row">
-          <div class="wb-lbl">Distribution de Weibull</div>
-          <div class="wb-val" id="wb">—</div>
+      <!-- Stats -->
+      <div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-lbl">Vitesse moyenne</div><div class="stat-val" id="v1">—</div></div>
+          <div class="stat-card"><div class="stat-lbl">Vitesse maximale</div><div class="stat-val" id="v0">—</div></div>
+          <div class="stat-card"><div class="stat-lbl">Direction dominante</div><div class="stat-val lg" id="v2">—</div></div>
+          <div class="stat-card"><div class="stat-lbl">Heures calmes</div><div class="stat-val" id="v3">—</div></div>
+          <div class="mch-wrap">
+            <div class="mch-title">Vitesse moyenne mensuelle</div>
+            <canvas id="mch" role="img" aria-label="Vitesse mensuelle"></canvas>
+          </div>
         </div>
       </div>
+    </div>
 
+    <!-- Typology + Sector cards -->
+    <div class="s1-cards" style="margin-top:.875rem;">
+      <div class="s1-card" id="s1-typology-card" style="display:none;">
+        <div class="s1-card-lbl">≈ Typologie du vent</div>
+        <div class="s1-card-val">
+          <span id="s1-wind-type">—</span>
+          <span class="s1-badge" id="s1-gust-bonus">—</span>
+        </div>
+        <div class="s1-card-sub">Ratio médian rafale / vent moyen : <strong id="s1-gust-ratio">—</strong></div>
+      </div>
+      <div class="s1-card" id="s1-sector-card" style="display:none;">
+        <div class="s1-card-lbl">⊙ Secteur de vent optimal</div>
+        <div class="s1-card-val"><span id="s1-fav-pct">—</span> % du temps</div>
+        <div class="s1-card-sub"><span id="s1-fav-h">—</span> h/an dans une fenêtre de ±45°</div>
+      </div>
+    </div>
+
+    <!-- Expandable detail -->
+    <button class="detail-toggle" id="detail-btn" onclick="toggleDetail()">
+      Voir l'analyse détaillée du vent
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="detail-content" id="detail-content">
+      <!-- Weibull -->
+      <div class="stat-card" style="margin-bottom:.75rem;"><div class="stat-lbl">Distribution de Weibull</div><div style="font-size:16px;font-weight:700;" id="wb">—</div></div>
       <!-- Jours productifs -->
-      <div class="days-section">
-        <div class="days-cards">
-          <div class="dc" style="--dc-color:var(--teal)">
-            <div class="dc-badge">
-              <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3 3l1.5 1.5M9.5 9.5L11 11M3 11l1.5-1.5M9.5 4.5L11 3"/></svg>
-              ≥ 5 m/s
-            </div>
-            <div class="dc-val" id="d5">—</div>
-            <div class="dc-unit">jours / an en moyenne</div>
-            <div class="dc-bar-bg"><div class="dc-bar-fill" id="d5bar" style="width:0%"></div></div>
-          </div>
-          <div class="dc" style="--dc-color:var(--purple)">
-            <div class="dc-badge">
-              <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3 3l1.5 1.5M9.5 9.5L11 11M3 11l1.5-1.5M9.5 4.5L11 3"/></svg>
-              ≥ 10 m/s
-            </div>
-            <div class="dc-val" id="d10">—</div>
-            <div class="dc-unit">jours / an en moyenne</div>
-            <div class="dc-bar-bg"><div class="dc-bar-fill" id="d10bar" style="width:0%"></div></div>
-          </div>
-        </div>
-        <div class="days-chart-card">
-          <div class="sec-lbl" style="margin-bottom:.5rem;">Jours productifs par mois · moyenne 2019–2023</div>
-          <div style="display:flex;gap:12px;margin-bottom:.65rem;flex-wrap:wrap;">
-            <div class="li"><div class="ld" style="background:rgba(26,148,105,.8)"></div>Jours ≥ 5 m/s</div>
-            <div class="li"><div class="ld" style="background:rgba(109,40,217,.8)"></div>Jours ≥ 10 m/s</div>
-          </div>
-          <div class="days-chart-wrap"><canvas id="dch" role="img" aria-label="Jours productifs par mois">Chargement.</canvas></div>
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.75rem;">
+        <div class="stat-card"><div class="stat-lbl">≥ 5 m/s</div><div style="font-size:26px;font-weight:800;color:var(--teal);" id="d5">—</div><div style="font-size:11px;color:var(--muted);">jours/an</div><div style="height:4px;background:rgba(26,148,105,.2);border-radius:2px;margin-top:.5rem;"><div id="d5bar" style="height:100%;background:var(--teal);border-radius:2px;width:0%;transition:width .8s;"></div></div></div>
+        <div class="stat-card"><div class="stat-lbl">≥ 10 m/s</div><div style="font-size:26px;font-weight:800;color:var(--purple);" id="d10">—</div><div style="font-size:11px;color:var(--muted);">jours/an</div><div style="height:4px;background:rgba(109,40,217,.2);border-radius:2px;margin-top:.5rem;"><div id="d10bar" style="height:100%;background:var(--purple);border-radius:2px;width:0%;transition:width .8s;"></div></div></div>
       </div>
+      <!-- Jours par mois chart -->
+      <div style="background:var(--card);border-radius:var(--r-md);padding:.875rem;border:1px solid var(--border);">
+        <div class="mch-title">Jours productifs par mois · Moyenne 2019–2023</div>
+        <div style="position:relative;height:140px;"><canvas id="dch" role="img" aria-label="Jours productifs"></canvas></div>
+      </div>
+      <!-- Potential card -->
+      <div id="pot" style="margin-top:.75rem;"><div class="pot-head" id="pot-head">—</div><div id="pot-body"></div></div>
+      <div id="pot-icon" style="display:none;"></div>
     </div>
   </div>
+</div><!-- end section 1 -->
 
-  <div class="pot-card" id="pot">
-    <div class="pot-icon" id="pot-icon">—</div>
-    <div><div class="pot-head" id="pot-head">—</div><div class="pot-body" id="pot-body"></div></div>
+<!-- ── Section 2 : Dispositif Philéole ───────────────────── -->
+<div class="section-wrap" id="sim" style="display:none;">
+  <div class="sec-header">
+    <div class="sec-num">2</div>
+    <div class="sec-title">Sélection du dispositif Philéole</div>
   </div>
-
-  <!-- Section 1 : indicateurs vent ────────────────────────────── -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.875rem;">
-
-    <!-- Typology (shown when gust data loaded) -->
-    <div id="s1-typology-card" style="display:none;background:var(--card);border-radius:var(--r-md);border:1.5px solid var(--border);padding:1rem;">
-      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">Typologie du vent</div>
-      <div style="font-size:17px;font-weight:800;color:var(--text);" id="s1-wind-type">—</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:.25rem;">Ratio médian rafale/vent : <strong id="s1-gust-ratio">—</strong></div>
-      <div style="font-size:11px;color:var(--blue);margin-top:.25rem;">Bonus de production : <strong id="s1-gust-bonus">—</strong></div>
-    </div>
-
-    <!-- Secteur optimal (shown after ERA5 analysis) -->
-    <div id="s1-sector-card" style="display:none;background:var(--card);border-radius:var(--r-md);border:1.5px solid var(--border);padding:1rem;">
-      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">Secteur de vent optimal</div>
-      <div style="font-size:17px;font-weight:800;color:var(--text);"><span id="s1-fav-pct">—</span>%<span style="font-size:12px;font-weight:400;color:var(--muted);"> du temps</span></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:.25rem;">≈ <strong id="s1-fav-h">—</strong> h/an en secteur ±45°</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:.25rem;">Autour du vent dominant · heures v ≥ 2 m/s</div>
-    </div>
-
-  </div>
-
-  <!-- ── Simulator ─────────────────────────────────────────── -->
-  <div class="sim-section" id="sim">
-    <div class="sim-header">
-      <div class="sim-header-icon">⚡</div>
-      <div class="sim-header-text">
-        <div class="sim-header-title">Simulateur de production</div>
-        <div class="sim-header-sub">P_moy fabricant × heures de vent ERA5 (v ≥ 2 m/s) · référence Philéole : 4 000 h/an</div>
-      </div>
-    </div>
-    <div class="sim-body">
-
-      <!-- Configurateur Philéole -->
-      <!-- Choix configuration -->
-      <div style="margin-bottom:1rem;">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.625rem;">Votre configuration Philéole</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.625rem;">
-          <button class="cfg-btn" id="cfg-turbine" onclick="setConfig('turbine')" style="border-color:var(--blue);background:var(--blue);color:#fff;">
-            <div style="font-size:20px;margin-bottom:4px;">🔧</div>
-            <div style="font-size:12px;font-weight:700;">Turbine</div>
-            <div style="font-size:10px;opacity:.8;">Unité individuelle</div>
-          </button>
-          <button class="cfg-btn" id="cfg-structure" onclick="setConfig('structure')">
-            <div style="font-size:20px;margin-bottom:4px;">🏗️</div>
-            <div style="font-size:12px;font-weight:700;">Structure</div>
-            <div style="font-size:10px;opacity:.7;">6 turbines</div>
-          </button>
-          <button class="cfg-btn" id="cfg-mur" onclick="setConfig('mur')">
-            <div style="font-size:20px;margin-bottom:4px;">🏭</div>
-            <div style="font-size:12px;font-weight:700;">Mur Philéole</div>
-            <div style="font-size:10px;opacity:.7;">18 turbines · gains inclus</div>
-          </button>
+  <div class="sec-body">
+    <div class="device-grid">
+      <!-- Config -->
+      <div>
+        <div class="field-lbl">Configuration</div>
+        <div class="cfg-buttons">
+          <button class="cfg-btn2 active" id="cfg-turbine" onclick="setConfig('turbine')">Turbine<small>1 éolienne</small></button>
+          <button class="cfg-btn2" id="cfg-structure" onclick="setConfig('structure')">Structure<small>6 turbines</small></button>
+          <button class="cfg-btn2" id="cfg-mur" onclick="setConfig('mur')">Mur Philéole<small>18 turbines</small></button>
         </div>
+        <div class="field-lbl" style="margin-top:.5rem;">Quantité</div>
+        <input type="number" id="inp-config-qty" class="inp-field" min="1" max="9999" value="1" oninput="onConfigQtyChange()" style="width:80px;display:inline-block;margin-right:.5rem;">
+        <span style="font-size:13px;color:var(--muted);" id="cfg-unit-label">turbine</span>
+        <div class="field-sub" id="der-turbines">= 1 turbine</div>
+        <div class="field-sub" id="cfg-qty-sub" style="display:none;"></div>
+        <div class="field-sub" id="cfg-qty-label" style="display:none;"></div>
       </div>
-      <!-- Quantité + hauteur -->
-      <div class="sim-inputs" style="grid-template-columns:1fr 1fr;">
-        <div class="sim-input-block">
-          <div class="sim-input-label" id="cfg-qty-label">Nombre de turbines</div>
-          <div class="sim-input-sub" id="cfg-qty-sub">1 turbine sélectionnée</div>
-          <div class="sim-input-row">
-            <input type="number" id="inp-config-qty" class="sim-num" min="1" max="9999" value="1" oninput="onConfigQtyChange()">
-            <span class="sim-num-unit" id="cfg-unit-label">turbines</span>
-          </div>
-          <div class="sim-derived" id="der-turbines">= <strong>1 turbine</strong></div>
-        </div>
-        <div class="sim-input-block">
-          <div class="sim-input-label">Hauteur du centre du rotor</div>
-          <div class="sim-input-sub">Au-dessus du sol · interpolation ERA5 10–100 m</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:.5rem;">
-            <button class="h-btn active" onclick="setHeight(10)">10 m</button>
-            <button class="h-btn" onclick="setHeight(20)">20 m</button>
-            <button class="h-btn" onclick="setHeight(30)">30 m</button>
-            <button class="h-btn" onclick="setHeight(50)">50 m</button>
-            <button class="h-btn" onclick="setHeight(100)">100 m</button>
-          </div>
-          <div class="sim-input-row">
-            <input type="number" id="inp-height" class="sim-num" min="10" max="100" value="10" oninput="onHeightChange()">
-            <span class="sim-num-unit">m</span>
-          </div>
-          <div class="sim-derived" id="der-height">Interpolation log ERA5 10–100 m</div>
-        </div>
-      </div>
-      <!-- Rendement -->
-      <div style="background:var(--bg);border-radius:var(--r-md);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
-        <div style="flex:1;">
-          <div style="font-size:12px;font-weight:700;color:var(--text);">Coefficient de rendement global</div>
-          <div style="font-size:11px;color:var(--amber);font-style:italic;">Hypothèse — à confirmer par Philéole</div>
+      <!-- Hauteur -->
+      <div>
+        <div class="field-lbl">Hauteur du centre du rotor</div>
+        <div class="h-btns">
+          <button class="hb active" onclick="setHeight(10)">10 m</button>
+          <button class="hb" onclick="setHeight(20)">20 m</button>
+          <button class="hb" onclick="setHeight(30)">30 m</button>
+          <button class="hb" onclick="setHeight(50)">50 m</button>
+          <button class="hb" onclick="setHeight(100)">100 m</button>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem;">
-          <input type="number" id="inp-eff" class="sim-num" min="1" max="100" step="1" value="80" oninput="onEffChange()" style="width:65px;">
-          <span class="sim-num-unit">%</span>
+          <input type="number" id="inp-height" class="inp-field" min="10" max="100" value="10" oninput="onHeightChange()" style="width:70px;">
+          <span style="font-size:13px;color:var(--muted);">m</span>
         </div>
+        <div class="field-sub" id="der-height">Vent interpolé ERA5 à la hauteur choisie</div>
       </div>
-
-      <!-- Chaîne de calcul production -->
-      <div id="prod-chain" style="display:none;background:var(--bg);border-radius:var(--r-md);padding:1rem;margin-bottom:1rem;">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem;">⚙️ Décomposition du calcul</div>
-        <div style="display:flex;flex-direction:column;gap:.5rem;">
-          <!-- Étape 1 -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--card);border-radius:8px;border-left:3px solid var(--blue);">
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text);">Étape 1 · Production brute de référence</div>
-              <div style="font-size:10px;color:var(--muted);">Courbe Philéole × ERA5 heure/heure · <span id="sk-hours">—</span> h/an productives</div>
-            </div>
-            <div style="font-size:15px;font-weight:800;color:var(--blue);" id="sk-real">—</div>
-          </div>
-          <!-- Étape 2 : mur bonus (affiché si config mur) -->
-          <div id="chain-mur-row" style="display:none;display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--card);border-radius:8px;border-left:3px solid var(--teal);">
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text);">Étape 2 · Gains mur Philéole (organisation + déflecteurs)</div>
-              <div style="font-size:10px;color:var(--muted);">×1,3455 dans ±45° · <span id="chain-fav-pct">—</span>% du temps en secteur favorable</div>
-            </div>
-            <div style="font-size:15px;font-weight:800;color:var(--teal);" id="chain-mur-gain">—</div>
-          </div>
-          <!-- Étape 3 : rendement -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--card);border-radius:8px;border-left:3px solid var(--purple);">
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text);">Étape <span id="chain-step-eff">2</span> · Rendement global (<span id="sk-eff-label">80</span>%)</div>
-              <div style="font-size:10px;color:var(--muted);">Génératrice, câblage, disponibilité · modifiable</div>
-            </div>
-            <div style="font-size:15px;font-weight:800;color:var(--purple);" id="sk-net">—</div>
-          </div>
-          <!-- Étape 4 : bonus vent -->
-          <div id="chain-gust-row" style="display:none;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--card);border-radius:8px;border-left:3px solid var(--amber);">
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text);">Étape <span id="chain-step-gust">3</span> · Bonus <span id="chain-gust-type">—</span></div>
-              <div style="font-size:10px;color:var(--muted);">Ratio médian rafales/vent : <span id="gust-ratio-chain">—</span></div>
-            </div>
-            <div style="font-size:15px;font-weight:800;color:var(--amber);" id="chain-gust-bonus">—</div>
-          </div>
-          <!-- Total -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem 1rem;background:linear-gradient(135deg,var(--blue),#0d4a8a);border-radius:8px;margin-top:.25rem;">
-            <div style="font-size:13px;font-weight:700;color:#fff;">⚡ Production finale estimée</div>
-            <div style="font-size:20px;font-weight:800;color:#fff;" id="sk-finale">—</div>
-          </div>
-          <!-- Référence -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:.375rem .75rem;">
-            <div style="font-size:11px;color:var(--muted);">Production nette de référence (sans bonus)</div>
-            <div style="font-size:12px;color:var(--muted);" id="sk-ref-only">—</div>
-          </div>
-        </div>
-      </div>
-      <!-- KPIs compacts -->
-      <div class="sim-kpis" style="margin-bottom:1rem;">
-        <div class="sk" style="--sk-color:var(--amber)">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Heures productives</div>
-          <div class="sk-val" id="sk-hours-kpi">—</div>
-          <div class="sk-unit">h/an · <span id="sk-height-label">10 m</span></div>
-        </div>
-        <div class="sk" style="--sk-color:var(--purple)">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Par mur (18 turbines)</div>
-          <div class="sk-val" id="sk-permur">—</div>
-          <div class="sk-unit">kWh / an / mur · brut</div>
-        </div>
-      </div>
-
-      <!-- Production table -->
-      <div class="prod-table-wrap">
-        <table class="prod-table">
-          <thead>
-            <tr>
-              <th>Mois</th>
-              <th>Heures (h)</th>
-              <th>Vent moy. à <span id="th-height">10 m</span> (m/s)</th>
-              <th>Estimation simplifiée — brut (kWh)</th>
-              <th>Simulation horaire — brut (kWh)</th>
-              <th>Écart</th>
-            </tr>
-          </thead>
-          <tbody id="prod-tbody"></tbody>
-          <tfoot>
-            <tr>
-              <td>Total annuel</td>
-              <td id="ft-avg">—</td>
-              <td id="ft-avg2">—</td>
-              <td id="ft-simple">—</td>
-              <td class="td-real" id="ft-real">—</td>
-              <td class="td-bonus" id="ft-bonus">—</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <div class="sim-note">
-        <strong>Production calculée à partir de la courbe de puissance attendue fournie par Philéole</strong> et des vitesses de vent ERA5. Une interpolation linéaire est réalisée entre les points de la courbe.
-        <strong>Estimation simplifiée</strong> : P(v_moy_mensuelle) × heures — ignore la variabilité intra-mensuelle.
-        <strong>Simulation horaire</strong> : Σ P_courbe(v_h à hauteur H) heure par heure sur 2019–2023 — les deux méthodes peuvent donner des totaux différents.
-        ⚠️ Au-delà de 20 m/s, 793,75 W/turbine est utilisé provisoirement (vitesse de coupure à confirmer par Philéole). La simulation ne prend pas encore en compte les interactions aérodynamiques entre éoliennes.
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── Gains mur Philéole ─────────────────────────────────────── -->
-  <div id="mur-section" style="display:none;margin-top:1.25rem;background:var(--card);border-radius:var(--r-lg);border:1.5px solid var(--border-med);box-shadow:var(--sh-sm);overflow:hidden;">
-    <div style="background:linear-gradient(135deg,#0a1f0e 0%,#1a4d24 55%,#2d7a3a 100%);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px;">
-      <div style="font-size:22px;">🏗️</div>
+      <!-- Rendement -->
       <div>
-        <div style="font-size:14px;font-weight:700;color:#fff;letter-spacing:-.2px;">Production mur Philéole — gains de structure</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;">Organisation ×1,17 · Déflecteurs ×1,15 · Actifs dans le secteur ±45° (vent dominant)</div>
-      </div>
-    </div>
-    <div style="padding:1.25rem;">
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:.875rem;">
-        <div class="sk" style="--sk-color:#1a9469;">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Production / mur · avec gains</div>
-          <div class="sk-val" id="mur-prod">—</div>
-          <div class="sk-unit">kWh / an / mur</div>
+        <div class="field-lbl">Rendement global</div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <input type="number" id="inp-eff" class="inp-field" min="1" max="100" value="80" oninput="onEffChange()" style="width:70px;">
+          <span style="font-size:13px;color:var(--muted);">%</span>
         </div>
-        <div class="sk" style="--sk-color:#1a9469;">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Gain vs 18 turbines isolées</div>
-          <div class="sk-val" id="mur-gain">—</div>
-          <div class="sk-unit">kWh suppl. / an / mur</div>
+        <div class="field-sub" style="color:var(--amber);">Hypothèse — à confirmer par Philéole</div>
+        <div class="field-sub">Génératrice, câblage et disponibilité</div>
+        <!-- Courbe info -->
+        <div style="margin-top:.875rem;padding:.625rem .75rem;background:var(--blue-light);border-radius:var(--r-sm);font-size:11px;color:var(--blue);">
+          <strong>Courbe Philéole</strong> · Démarrage ≥ 2 m/s · Max 793,75 W
+          <br>⚠️ Au-delà de 20 m/s : valeur provisoire
         </div>
-        <div class="sk" style="--sk-color:#b45309;">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Vent favorable sur site</div>
-          <div class="sk-val" id="mur-pct">—</div>
-          <div class="sk-unit">% du temps dans ±45°</div>
-        </div>
-        <div class="sk" style="--sk-color:#b45309;">
-          <div class="sk-accent"></div>
-          <div class="sk-lbl">Heures favorables</div>
-          <div class="sk-val" id="mur-fav-h">—</div>
-          <div class="sk-unit">h / an</div>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.6;padding:.625rem .875rem;background:var(--bg);border-radius:var(--r-sm);">
-        Calculé heure par heure depuis la direction ERA5. <strong>Vent favorable</strong> = direction dans ±45° autour de la direction dominante ERA5 du site.
-        Multiplicateur en vent favorable : ×<strong>1,3455</strong> (structure ×1,17 × déflecteurs ×1,15). Vent hors secteur : ×1,0.
-        Ces gains s'appliquent à un mur complet de 18 turbines organisées — pas à des turbines isolées.
       </div>
     </div>
   </div>
-
-
-    <!-- ── ROI ───────────────────────────────────────────────── -->
-  <div class="roi-section" id="roi-section">
-    <div class="roi-header">
-      <div class="roi-header-icon">📈</div>
-      <div class="roi-header-text">
-        <div class="roi-header-title">Retour sur investissement</div>
-        <div class="roi-header-sub">Basé sur la production simulée et le prix de l'électricité</div>
-      </div>
-    </div>
-    <div class="roi-body">
-
-      <!-- Paramètres -->
-      <div class="roi-inputs">
-        <div class="roi-input-block">
-          <div class="roi-input-label">Prix unitaire d'une éolienne</div>
-          <div class="roi-input-sub">Hors taxes · ajustable selon devis</div>
-          <div class="roi-input-row">
-            <input type="number" id="roi-price" class="roi-num" min="1" value="1000" oninput="onRoiChange()">
-            <span class="roi-num-unit">€ HT / turbine</span>
-          </div>
-        </div>
-        <div class="roi-input-block">
-          <div class="roi-input-label">Prix actuel de l'électricité</div>
-          <div class="roi-input-sub">Prix de l'électricité payé par le client</div>
-          <div class="roi-input-row">
-            <input type="number" id="roi-kwh" class="roi-num" min="0.01" step="0.01" value="0.22" oninput="onRoiChange()">
-            <span class="roi-num-unit">€ / kWh</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- KPIs -->
-      <div class="roi-kpis">
-        <div class="rk" style="--rk-color:#6d28d9">
-          <div class="rk-accent"></div>
-          <div class="rk-lbl">Coût total installation</div>
-          <div class="rk-val" id="rk-cost">—</div>
-          <div class="rk-unit">€ HT</div>
-        </div>
-        <div class="rk" style="--rk-color:var(--blue)">
-          <div class="rk-accent"></div>
-          <div class="rk-lbl">Économie annuelle</div>
-          <div class="rk-val" id="rk-eco-real">—</div>
-          <div class="rk-unit">€ / an</div>
-        </div>
-      </div>
-
-      <!-- Badges ROI -->
-      <div class="roi-badges">
-        <div class="roi-badge avg-b">
-          <div class="roi-badge-icon">🕐</div>
-          <div class="roi-badge-label">Temps de retour · estimation simplifiée</div>
-          <div class="roi-badge-val" id="rb-avg">—</div>
-          <div class="roi-badge-sub" id="rb-avg-sub"></div>
-        </div>
-        <div class="roi-badge real-b">
-          <div class="roi-badge-icon">⚡</div>
-          <div class="roi-badge-label">Temps de retour · courbe Philéole</div>
-          <div class="roi-badge-val" id="rb-real">—</div>
-          <div class="roi-badge-sub" id="rb-real-sub"></div>
-        </div>
-      </div>
-
-      <!-- Graphique courbe de remboursement -->
-      <div class="roi-chart-card">
-        <div class="sec-lbl" style="margin-bottom:.5rem;">Courbe de remboursement cumulé sur 20 ans</div>
-        <div class="roi-legend">
-          <div class="li"><div class="ld" style="background:rgba(100,116,139,.75)"></div>Économies · estimation simplifiée</div>
-          <div class="li"><div class="ld" style="background:rgba(26,95,168,.85)"></div>Économies · courbe Philéole (simulation horaire)</div>
-          <div class="li"><div class="ld" style="background:rgba(220,38,38,.8);height:2px;width:18px;border-radius:1px;"></div>Coût installation</div>
-        </div>
-
-      <!-- Bonus rafales -->
-      <div id="gust-section" style="display:none;margin-top:1.5rem;">
-        <div style="border-top:1.5px solid var(--border);padding-top:1.25rem;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
-            <div id="gust-icon" style="font-size:24px;">💨</div>
-            <div>
-              <div style="font-size:14px;font-weight:700;color:var(--text);" id="gust-label">—</div>
-              <div style="font-size:11px;color:var(--muted);">Ratio médian rafale/vent moyen ERA5 : <strong id="gust-ratio">—</strong> · Bonus : <strong id="gust-bonus-label">—</strong></div>
-            </div>
-          </div>
-          <!-- Scénario avec bonus — MIS EN AVANT -->
-          <div style="background:linear-gradient(135deg,#0b2340,#1a5fa8);border-radius:var(--r-md);padding:1.25rem;margin-bottom:.75rem;">
-            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">⚡ Production estimée avec prise en compte des rafales</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">
-              <div>
-                <div style="font-size:24px;font-weight:800;color:#fff;" id="gust-prod">—</div>
-                <div style="font-size:10px;color:rgba(255,255,255,.5);">kWh / an</div>
-              </div>
-              <div>
-                <div style="font-size:24px;font-weight:800;color:#60d4a0;" id="gust-eco">—</div>
-                <div style="font-size:10px;color:rgba(255,255,255,.5);">€ / an économisés</div>
-              </div>
-              <div>
-                <div style="font-size:24px;font-weight:800;color:#fbbf24;" id="gust-roi">—</div>
-                <div style="font-size:10px;color:rgba(255,255,255,.5);">temps de retour</div>
-              </div>
-            </div>
-          </div>
-          <!-- Référence — secondaire -->
-          <div style="background:var(--bg);border-radius:var(--r-md);padding:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;">
-            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:2px;">📊 Estimation de référence — hors bonus rafales</div>
-            <div><div style="font-size:16px;font-weight:700;color:var(--text);" id="gust-ref-prod">—</div><div style="font-size:10px;color:var(--muted);">kWh / an</div></div>
-            <div><div style="font-size:16px;font-weight:700;color:var(--text);" id="gust-ref-eco">—</div><div style="font-size:10px;color:var(--muted);">€ / an</div></div>
-            <div><div style="font-size:16px;font-weight:700;color:var(--text);" id="gust-ref-roi">—</div><div style="font-size:10px;color:var(--muted);">temps de retour</div></div>
-          </div>
-          <div style="font-size:10px;color:var(--muted);margin-top:.875rem;font-style:italic;line-height:1.5;">
-            Cette simulation propose une estimation haute intégrant l'effet potentiel des rafales observées dans les données ERA5. La production réelle dépend également de la hauteur, des obstacles, du bâtiment et des conditions locales. Une étude sur site est recommandée avant investissement.
-          </div>
-        </div>
-      </div>
-        <div class="roi-chart-wrap" style="margin-top:.75rem;">
-          <canvas id="roich" role="img" aria-label="Courbe de retour sur investissement">Chargement.</canvas>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
 </div>
+
+<!-- ── Section 3 : Estimation de la production ───────────── -->
+<div class="section-wrap" id="prod-chain" style="display:none;">
+  <div class="sec-header">
+    <div class="sec-num">3</div>
+    <div class="sec-title">Estimation de la production</div>
+  </div>
+  <div class="sec-body">
+    <div class="prod-steps">
+      <!-- Step 1 -->
+      <div class="prod-step">
+        <div class="step-num">1</div>
+        <div class="step-info">
+          <div class="step-title">Production brute de référence</div>
+          <div class="step-sub">Courbe Philéole × données ERA5 · <span id="sk-hours">—</span> h/an productives à <span id="sk-height-label">10 m</span></div>
+        </div>
+        <div class="step-val" id="sk-real">—</div>
+      </div>
+      <!-- Step 2 : mur (hidden if not mur) -->
+      <div class="prod-step bonus" id="chain-mur-row" style="display:none;">
+        <div class="step-num" style="background:var(--teal);">2</div>
+        <div class="step-info">
+          <div class="step-title">Gains mur et déflecteurs</div>
+          <div class="step-sub">×1,17 organisation · ×1,15 déflecteurs · <span id="chain-fav-pct">—</span>% en secteur optimal</div>
+        </div>
+        <div class="step-val plus" id="chain-mur-gain">—</div>
+      </div>
+      <!-- Step 3 : rendement -->
+      <div class="prod-step">
+        <div class="step-num" style="background:var(--purple);" id="chain-step-eff">2</div>
+        <div class="step-info">
+          <div class="step-title">Rendement global à <span id="sk-eff-label">80</span> %</div>
+          <div class="step-sub">Production nette après pertes</div>
+        </div>
+        <div class="step-val" id="sk-net">—</div>
+      </div>
+      <!-- Step 4 : gust bonus (hidden until gust data) -->
+      <div class="prod-step bonus" id="chain-gust-row" style="display:none;">
+        <div class="step-num" style="background:var(--amber);" id="chain-step-gust">3</div>
+        <div class="step-info">
+          <div class="step-title">Bonus « <span id="chain-gust-type">—</span> »</div>
+          <div class="step-sub">Coefficient appliqué : ×<span id="gust-ratio-chain">—</span></div>
+        </div>
+        <div class="step-val plus" id="chain-gust-bonus">—</div>
+      </div>
+    </div>
+
+    <!-- Production finale -->
+    <div class="prod-finale">
+      <div>
+        <div class="prod-finale-lbl">Production finale estimée</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);">Configuration et bonus inclus</div>
+      </div>
+      <div class="prod-finale-val"><span id="sk-finale">—</span> kWh/an</div>
+    </div>
+    <div class="prod-ref" id="sk-ref-only"></div>
+
+    <!-- KPIs compacts -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.875rem;">
+      <div class="stat-card"><div class="stat-lbl">Heures productives</div><div style="font-size:18px;font-weight:800;" id="sk-hours-kpi">—</div><div style="font-size:11px;color:var(--muted);">h/an</div></div>
+      <div class="stat-card"><div class="stat-lbl">Par mur (18 turbines)</div><div style="font-size:18px;font-weight:800;" id="sk-permur">—</div><div style="font-size:11px;color:var(--muted);">kWh/an · brut</div></div>
+    </div>
+
+    <!-- Expandable monthly table -->
+    <button class="detail-toggle" onclick="toggleMonthly()" id="monthly-btn" style="margin-top:.75rem;">
+      Voir le détail mensuel de la production
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div id="monthly-content" style="display:none;margin-top:.5rem;overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead id="prod-thead">
+          <tr style="background:var(--navy);color:#fff;">
+            <th style="padding:.5rem .75rem;text-align:left;">Mois</th>
+            <th style="padding:.5rem .75rem;text-align:right;">H vent</th>
+            <th style="padding:.5rem .75rem;text-align:right;">Vent moy. (<span id="th-height">10m</span>)</th>
+            <th style="padding:.5rem .75rem;text-align:right;">Simplifiée</th>
+            <th style="padding:.5rem .75rem;text-align:right;color:#60d4a0;">Horaire</th>
+            <th style="padding:.5rem .75rem;text-align:right;">Écart</th>
+          </tr>
+        </thead>
+        <tbody id="prod-tbody"></tbody>
+        <tfoot>
+          <tr style="background:#222;color:#fff;font-weight:700;">
+            <td style="padding:.5rem .75rem;">Total</td>
+            <td style="padding:.5rem .75rem;text-align:right;" id="ft-avg">—</td>
+            <td style="padding:.5rem .75rem;text-align:right;" id="ft-avg2">—</td>
+            <td style="padding:.5rem .75rem;text-align:right;" id="ft-simple">—</td>
+            <td style="padding:.5rem .75rem;text-align:right;color:#60d4a0;" id="ft-real">—</td>
+            <td style="padding:.5rem .75rem;text-align:right;" id="ft-bonus">—</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="font-size:11px;color:var(--muted);margin-top:.75rem;line-height:1.6;padding:.625rem;background:var(--bg);border-radius:var(--r-sm);" id="sim-note-text">
+        Production calculée à partir de la courbe de puissance attendue fournie par Philéole et des vitesses de vent ERA5. Une interpolation linéaire est réalisée entre les points de la courbe.
+        <strong>Estimation simplifiée</strong> : P(v_moy_mensuelle) × heures. <strong>Simulation horaire</strong> : Σ P_courbe(v_h) heure par heure.
+        ⚠️ Au-delà de 20 m/s, 793,75 W/turbine provisoire. Pas d'interactions aérodynamiques modélisées.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Mur Philéole gains ─────────────────────────────────── -->
+<div id="mur-section" style="display:none;margin-bottom:1rem;">
+  <div class="mur-inner">
+    <div style="font-size:18px;">🏗️</div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#fff;">Gains mur Philéole</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);">Organisation ×1,17 · Déflecteurs ×1,15 · Secteur ±45°</div>
+    </div>
+  </div>
+  <div class="mur-body">
+    <div class="mur-kpis">
+      <div class="mur-kpi"><div class="mur-kpi-lbl">Production / mur · avec gains</div><div class="mur-kpi-val" id="mur-prod">—</div><div style="font-size:10px;color:var(--muted);">kWh/an</div></div>
+      <div class="mur-kpi"><div class="mur-kpi-lbl">Gain vs turbines isolées</div><div class="mur-kpi-val" id="mur-gain">—</div><div style="font-size:10px;color:var(--muted);">kWh suppl.</div></div>
+      <div class="mur-kpi"><div class="mur-kpi-lbl">Vent favorable</div><div class="mur-kpi-val" id="mur-pct">—</div><div style="font-size:10px;color:var(--muted);">% du temps</div></div>
+      <div class="mur-kpi"><div class="mur-kpi-lbl">H favorables</div><div class="mur-kpi-val" id="mur-fav-h">—</div><div style="font-size:10px;color:var(--muted);">h/an</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Section 4 : Retour sur investissement ─────────────── -->
+<div class="section-wrap" id="roi-section" style="display:none;">
+  <div class="sec-header purple">
+    <div class="sec-num">4</div>
+    <div class="sec-title">Retour sur investissement</div>
+  </div>
+  <div class="sec-body">
+    <!-- Fields -->
+    <div class="roi-fields">
+      <div>
+        <div class="field-lbl">Prix par turbine</div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <input type="number" id="roi-price" class="inp-field" value="1000" oninput="onRoiChange()">
+          <span style="font-size:12px;color:var(--muted);">€ HT</span>
+        </div>
+      </div>
+      <div>
+        <div class="field-lbl">Coûts complémentaires</div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <input type="number" id="roi-extra" class="inp-field" value="0" oninput="onRoiChange()">
+          <span style="font-size:12px;color:var(--muted);">€ HT</span>
+        </div>
+      </div>
+      <div>
+        <div class="field-lbl">Prix de l'électricité</div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <input type="number" id="roi-kwh" class="inp-field" value="0.22" step="0.01" oninput="onRoiChange()">
+          <span style="font-size:12px;color:var(--muted);">€/kWh</span>
+        </div>
+      </div>
+    </div>
+    <!-- Summary -->
+    <div class="roi-summary">
+      <div class="roi-kpi"><div class="roi-kpi-lbl">Coût total du projet</div><div class="roi-kpi-val" id="rk-cost">—</div></div>
+      <div class="roi-kpi"><div class="roi-kpi-lbl">Économie annuelle</div><div class="roi-kpi-val" id="rk-eco-real">—</div></div>
+    </div>
+    <!-- ROI result -->
+    <div class="roi-result">
+      <div class="roi-result-lbl">Temps de retour estimé</div>
+      <div id="rb-real" class="roi-result-val">—</div>
+      <div class="roi-result-ref" id="rb-real-sub"></div>
+    </div>
+    <!-- Hidden compat IDs -->
+    <span id="rb-avg" style="display:none;"></span>
+    <span id="rb-avg-sub" style="display:none;"></span>
+
+    <!-- Gust section -->
+    <div id="gust-section">
+      <div class="gust-row">
+        <div id="gust-icon" style="font-size:20px;">💨</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;" id="gust-label">—</div>
+          <div style="font-size:11px;color:var(--muted);">Ratio médian : <strong id="gust-ratio">—</strong> · Bonus : <strong id="gust-bonus-label">—</strong></div>
+        </div>
+      </div>
+      <div style="background:var(--card);border-radius:var(--r-sm);padding:.75rem;font-size:11px;color:var(--muted);">
+        ✅ Bonus intégré dans le temps de retour ci-dessus.
+        Production sans bonus : <strong id="gust-ref-prod">—</strong> kWh/an →
+        Avec bonus : <strong id="gust-prod">—</strong> kWh/an
+        (+ <strong id="gust-eco">—</strong> kWh/an)
+      </div>
+      <span id="gust-roi" style="display:none;"></span>
+      <span id="gust-ref-eco" style="display:none;"></span>
+      <span id="gust-ref-roi" style="display:none;"></span>
+    </div>
+
+    <!-- Chart -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">Remboursement cumulé</div>
+    <div class="roi-chart-wrap">
+      <canvas id="roich" role="img" aria-label="Courbe de remboursement">Chargement.</canvas>
+    </div>
+    <div style="display:flex;gap:1rem;font-size:11px;color:var(--muted);flex-wrap:wrap;margin-bottom:1rem;">
+      <div><span style="display:inline-block;width:16px;height:2px;background:rgba(100,116,139,.75);vertical-align:middle;margin-right:4px;"></span>Estimation simplifiée</div>
+      <div><span style="display:inline-block;width:16px;height:2px;background:rgba(26,95,168,.85);vertical-align:middle;margin-right:4px;"></span>Courbe Philéole</div>
+      <div><span style="display:inline-block;width:16px;height:2px;background:rgba(220,38,38,.8);border-top:2px dashed rgba(220,38,38,.8);border-bottom:none;vertical-align:middle;margin-right:4px;"></span>Coût du projet</div>
+    </div>
+
+    <!-- CTA -->
+    <button class="btn-cta">Recevoir mon analyse personnalisée</button>
+  </div>
+</div>
+
+</div><!-- end .app -->
+
+<script>
+function toggleDetail(){
+  var btn=document.getElementById('detail-btn');
+  var content=document.getElementById('detail-content');
+  var open=content.classList.contains('open');
+  content.classList.toggle('open',!open);
+  btn.classList.toggle('open',!open);
+  btn.childNodes[0].textContent=open?'Voir l\'analyse détaillée du vent ':'Masquer l\'analyse détaillée ';
+}
+function toggleMonthly(){
+  var content=document.getElementById('monthly-content');
+  var btn=document.getElementById('monthly-btn');
+  var open=content.style.display!=='none';
+  content.style.display=open?'none':'block';
+  btn.childNodes[0].textContent=open?'Voir le détail mensuel de la production ':'Masquer le détail mensuel ';
+}
+/* Show section 1 when analysis completes */
+function showPanel(){
+  var panel=document.getElementById('panel');
+  if(panel)panel.style.display='block';
+}
+</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -837,7 +663,7 @@ function interpHeight(v10,v100,h){
   return Math.max(0,v10+(v100-v10)*w);
 }
 
-function setSt(m){document.getElementById('st').textContent=m;}
+function setSt(m){var el=document.getElementById('st');el.textContent=m;el.style.display=m?'block':'none';}
 function d2s(d){return Math.round(((d%360)+360)%360/22.5)%16;}
 function gamma(z){
   if(z<.5)return Math.PI/(Math.sin(Math.PI*z)*gamma(1-z));
@@ -989,7 +815,7 @@ async function runAnalysis(lat,lon,dn){
     var mo5avg=mo5.map(function(v){return parseFloat((v/years).toFixed(1));});
     var mo10avg=mo10.map(function(v){return parseFloat((v/years).toFixed(1));});
 
-    document.getElementById('lloc').textContent='📍 '+place+' — '+lat.toFixed(3)+', '+lon.toFixed(3)+' — ERA5 2019–2023 · models=era5 ('+Math.round(n/1000)+'k points)';
+    var _lel=document.getElementById('lloc');_lel.style.display='block';_lel.textContent='📍 '+place+' — '+lat.toFixed(3)+', '+lon.toFixed(3)+' — ERA5 2019–2023 · models=era5 ('+Math.round(n/1000)+'k points)';
     document.getElementById('v0').textContent=avg.toFixed(1)+' m/s';
     document.getElementById('v1').textContent=mx.toFixed(1)+' m/s';
     document.getElementById('v2').textContent=D16[ds];
@@ -1029,6 +855,7 @@ async function runAnalysis(lat,lon,dn){
     /* Init inputs and run first computation */
     setConfig('turbine'); /* init configurateur */
     onHeightChange();
+    showPanel();
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
     document.getElementById('mur-section').style.display='none';
@@ -1065,22 +892,18 @@ function updateMap(lat,lon,scts,ssps,total,avg,domDir,place,ds){
     .addTo(gmap)
     .bindPopup(
       '<strong style="font-size:14px;display:block;margin-bottom:4px;">'+place.split(',')[0]+'</strong>'
-      +'Vitesse moy. : <strong>'+avg.toFixed(1)+' m/s</strong><br>'
-      +'Dir. dominante : <strong>'+domDir+'</strong>',
+      +'Vent moyen : <strong>'+avg.toFixed(1)+' m/s</strong><br>'
+      +'Direction dominante : <strong>'+domDir+'</strong>',
       {offset:[0,-4]}
     ).openPopup();
 
-  var sz=320,oc=document.createElement('canvas');
-  oc.width=sz;oc.height=sz;
-  drawRose(oc,scts,ssps,total,ds); /* pass ds for ±45° arc */
-
-  roseMk=L.marker([lat,lon],{
-    icon:L.divIcon({
-      html:'<img src="'+oc.toDataURL()+'" width="'+sz+'" height="'+sz+'" style="opacity:.7;pointer-events:none;" alt="rose des vents">',
-      iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],className:'wri'
-    }),
-    interactive:false,zIndexOffset:-1000
-  }).addTo(gmap);
+  /* Rose des vents : overlay canvas absolu sur la carte */
+  var oc=document.getElementById('rose-canvas');
+  if(oc){
+    oc.width=200;oc.height=200;
+    drawRose(oc,scts,ssps,total,ds);
+    oc.style.opacity='0.85';
+  }
 }
 
 function drawRose(cv,counts,sums,total,domSec){
@@ -1208,9 +1031,7 @@ function setConfig(type){
   CONFIG_TYPE=type;
   ['turbine','structure','mur'].forEach(function(t){
     var btn=document.getElementById('cfg-'+t);
-    if(btn){ btn.style.background=t===type?'var(--blue)':'';
-             btn.style.color=t===type?'#fff':'';
-             btn.style.borderColor=t===type?'var(--blue)':''; }
+    if(btn){ btn.classList.toggle('active',t===type); }
   });
   var labels={turbine:['Nombre de turbines','turbines'],structure:['Nombre de structures','structures'],mur:['Nombre de murs Philéole','murs (18 turbines)']};
   var L=labels[type];
@@ -1249,7 +1070,7 @@ function getEff(){ return Math.min(1,Math.max(0,(parseFloat(document.getElementB
 function setHeight(h){
   document.getElementById('inp-height').value=h;
   INSTALL_H=h;
-  document.querySelectorAll('.h-btn').forEach(function(b){
+  document.querySelectorAll('.hb').forEach(function(b){
     b.classList.toggle('active',parseInt(b.textContent)===h);
   });
   onHeightChange();
@@ -1433,6 +1254,8 @@ function computeProduction(N){
 
   computeROI();
   computeMurGains();
+  /* Synchroniser la section rafales si données disponibles */
+  if(window.simGusts&&gustMedianRatio!==null) updateGustROI();
 }
 
 /* ── Gains mur Philéole ──────────────────────────────────────── */
@@ -1506,7 +1329,8 @@ function computeROI(){
   var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.22;
   var N=getNTurbines();
 
-  var cost=N*priceUnit;
+  var extra=parseFloat(document.getElementById('roi-extra')?document.getElementById('roi-extra').value:0)||0;
+  var cost=N*priceUnit+extra;
   var ecoAvg=lastAvgKwh*priceKwh;
   var ecoReal=lastRealKwh*priceKwh;
 
@@ -1520,6 +1344,10 @@ function computeROI(){
     var yrs=cost/eco;
     document.getElementById(valId).textContent=roiLabel(yrs);
     document.getElementById(subId).textContent='soit '+Math.round(yrs*12)+' mois';
+    if(valId==='rb-real'&&lastAvgKwh>0&&lastAvgKwh!==eco/priceKwh){
+      var refYrs=cost/(lastAvgKwh*priceKwh);
+      document.getElementById(subId).textContent+=' · Référence sans bonus : '+roiLabel(refYrs);
+    }
   }
   setRoi('rb-avg','rb-avg-sub',ecoAvg);
   setRoi('rb-real','rb-real-sub',ecoReal);
@@ -1660,27 +1488,19 @@ function computeGustTypology(){
 }
 
 function updateGustROI(){
-  if(lastRealKwh===0)return;
+  if(!gustMedianRatio||lastRealKwh===0)return;
   var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.22;
-  var priceUnit=parseFloat(document.getElementById('roi-price').value)||1000;
-  var N=getNTurbines();
-  var cost=N*priceUnit;
-  /* Production nette de référence */
-  var refKwh=window.lastNetRef||lastRealKwh; /* nette sans bonus */
-  var refEco=refKwh*priceKwh;
-  var refTR=refEco>0?cost/refEco:null;
-  /* Production avec bonus rafales */
-  var bonusKwh=refKwh*gustBonusCoeff;
-  var bonusEco=bonusKwh*priceKwh;
-  var bonusTR=bonusEco>0?cost/bonusEco:null;
-  /* Affichage bonus (primaire) */
-  document.getElementById('gust-prod').textContent=Math.round(bonusKwh).toLocaleString('fr-FR')+' kWh';
-  document.getElementById('gust-eco').textContent=Math.round(bonusEco).toLocaleString('fr-FR')+' €';
-  document.getElementById('gust-roi').textContent=bonusTR?roiLabel(bonusTR):'—';
-  /* Affichage référence (secondaire) */
-  document.getElementById('gust-ref-prod').textContent=Math.round(refKwh).toLocaleString('fr-FR')+' kWh';
-  document.getElementById('gust-ref-eco').textContent=Math.round(refEco).toLocaleString('fr-FR')+' €';
-  document.getElementById('gust-ref-roi').textContent=refTR?roiLabel(refTR):'—';
+  var refKwh=window.lastNetRef||lastRealKwh/gustBonusCoeff;
+  var bonusKwh=refKwh*gustBonusCoeff; /* = lastRealKwh */
+  var deltaKwh=bonusKwh-refKwh;
+  /* Affichage delta */
+  var el=document.getElementById('gust-ref-prod');
+  if(el)el.textContent=Math.round(refKwh).toLocaleString('fr-FR');
+  el=document.getElementById('gust-prod');
+  if(el)el.textContent=Math.round(bonusKwh).toLocaleString('fr-FR');
+  el=document.getElementById('gust-eco');
+  if(el)el.textContent='+'+Math.round(deltaKwh).toLocaleString('fr-FR');
+  /* ids cachés — pas nécessaires mais conservés */
 }
 
 /* Boot */
