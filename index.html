@@ -583,7 +583,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     </div>
 
     <!-- CTA -->
-    <button class="btn-cta" type="button" onclick="openLeadModal()">Je demande mon analyse personnalisée</button>
+    <button class="btn-cta" type="button" onclick="openLeadModal()">Recevoir mon analyse préliminaire</button>
   </div>
 </div>
 
@@ -593,14 +593,17 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <div class="modal-card">
     <div class="modal-head">
       <div>
-        <div class="modal-title" id="lead-title">Demander une analyse personnalisée</div>
-        <div class="modal-sub">Laissez vos coordonnées et les résultats de cette simulation seront joints automatiquement à votre demande.</div>
+        <div class="modal-title" id="lead-title">Recevoir mon analyse préliminaire</div>
+        <div class="modal-sub">Renseignez vos coordonnées pour télécharger immédiatement le PDF de votre simulation.</div>
       </div>
       <button class="modal-close" type="button" onclick="closeLeadModal()" aria-label="Fermer">×</button>
     </div>
-    <form name="demande-analyse" id="lead-form" method="POST" data-netlify="true" netlify-honeypot="bot-field" onsubmit="submitLeadForm(event)">
+    <form name="demande-analyse" id="lead-form" method="POST" accept-charset="UTF-8" data-netlify="true" netlify-honeypot="bot-field" onsubmit="submitLeadForm(event)">
       <input type="hidden" name="form-name" value="demande-analyse">
       <p style="display:none;"><label>Ne pas remplir : <input name="bot-field"></label></p>
+      <input type="hidden" name="type_analyse" value="Simulation préliminaire Philéole">
+      <input type="hidden" name="page_source" id="lead-source">
+      <input type="hidden" name="date_demande" id="lead-date">
       <input type="hidden" name="adresse_simulation" id="lead-address">
       <input type="hidden" name="configuration" id="lead-config">
       <input type="hidden" name="hauteur" id="lead-height">
@@ -624,17 +627,23 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
           <input class="inp-field" id="lead-company" name="organisation" autocomplete="organization">
         </div>
         <div class="full">
+          <label class="field-lbl" for="lead-role">Fonction</label>
+          <input class="inp-field" id="lead-role" name="fonction" autocomplete="organization-title" placeholder="Dirigeant, maire, DGS…">
+        </div>
+        <div class="full">
           <label class="field-lbl" for="lead-message">Votre projet</label>
           <textarea class="inp-field" id="lead-message" name="message" rows="3" style="resize:vertical;font-family:inherit;"></textarea>
         </div>
       </div>
-      <label class="consent-row"><input type="checkbox" name="consentement" required> <span>J’accepte que Philéole utilise ces informations pour répondre à ma demande d’analyse.</span></label>
-      <button class="btn-cta" id="lead-submit" type="submit" style="margin-top:0;">Envoyer ma demande</button>
-      <div class="form-feedback" id="lead-feedback" role="status"></div>
+      <div style="font-size:11px;line-height:1.5;color:var(--muted);background:var(--bg);padding:.7rem;border-radius:var(--r-sm);margin-top:.875rem;">Cette simulation préalable et simplifiée ne remplace pas une étude de faisabilité. Les équipes Philéole doivent confirmer le potentiel réel du site avant tout projet.</div>
+      <label class="consent-row"><input type="checkbox" name="consentement" value="oui" required> <span>J’accepte que Philéole utilise ces informations pour me transmettre cette analyse et me recontacter au sujet de mon projet.</span></label>
+      <button class="btn-cta" id="lead-submit" type="submit" style="margin-top:0;">Télécharger mon analyse PDF</button>
+      <div class="form-feedback" id="lead-feedback" role="status" aria-live="polite"></div>
     </form>
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 function toggleDetail(){
   var btn=document.getElementById('detail-btn');
@@ -658,33 +667,141 @@ function showPanel(){
 }
 function openLeadModal(){
   var snap=window.lastProductionSnapshot||{};
+  if(!isFinite(snap.netKwh))return;
   document.getElementById('lead-address').value=document.getElementById('addr').value||'';
   document.getElementById('lead-config').value=CONFIG_TYPE+' · '+getNTurbines()+' turbine(s)';
   document.getElementById('lead-height').value=(snap.height||getHeight())+' m';
   document.getElementById('lead-production').value=isFinite(snap.netKwh)?Math.round(snap.netKwh)+' kWh/an':'';
   document.getElementById('lead-roi').value=document.getElementById('rb-real').textContent||'';
+  document.getElementById('lead-source').value=window.location.href;
+  document.getElementById('lead-date').value=new Date().toISOString();
+  var feedback=document.getElementById('lead-feedback');
+  var btn=document.getElementById('lead-submit');
+  feedback.textContent='';feedback.className='form-feedback';
+  btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
   document.getElementById('lead-modal').classList.add('open');
+  document.body.style.overflow='hidden';
   setTimeout(function(){document.getElementById('lead-name').focus();},0);
 }
-function closeLeadModal(){document.getElementById('lead-modal').classList.remove('open');}
+function closeLeadModal(){
+  document.getElementById('lead-modal').classList.remove('open');
+  document.body.style.overflow='';
+}
 async function submitLeadForm(event){
   event.preventDefault();
   var form=event.currentTarget;
   var btn=document.getElementById('lead-submit');
   var feedback=document.getElementById('lead-feedback');
-  btn.disabled=true;btn.textContent='Envoi en cours…';feedback.className='form-feedback';
+  btn.disabled=true;btn.textContent='Préparation du PDF…';feedback.className='form-feedback';
   try{
     var body=new URLSearchParams(new FormData(form)).toString();
-    var response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body});
+    var response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:body});
     if(!response.ok)throw new Error('Échec de l’envoi');
-    feedback.textContent='Votre demande a bien été envoyée.';
+    generateAnalysisPDF();
+    feedback.textContent='Votre analyse a été générée. Le téléchargement vient de démarrer.';
     feedback.className='form-feedback ok';
-    btn.textContent='Demande envoyée';
+    btn.textContent='PDF téléchargé';
   }catch(error){
-    feedback.textContent='L’envoi n’a pas abouti. Réessayez dans quelques instants.';
+    feedback.textContent='Le téléchargement n’a pas abouti. Vérifiez votre connexion puis réessayez.';
     feedback.className='form-feedback err';
-    btn.disabled=false;btn.textContent='Envoyer ma demande';
+    btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
   }
+}
+
+function generateAnalysisPDF(){
+  if(!window.jspdf||!window.jspdf.jsPDF)throw new Error('Générateur PDF indisponible');
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({unit:'mm',format:'a4'});
+  var snap=window.lastProductionSnapshot||{};
+  var address=document.getElementById('lead-address').value||'Site analysé';
+  var config=document.getElementById('lead-config').value||'—';
+  var height=document.getElementById('lead-height').value||'—';
+  var roi=document.getElementById('lead-roi').value||'—';
+  var priceKwh=parseFloat(document.getElementById('roi-kwh').value)||0.25;
+  var priceUnit=parseFloat(document.getElementById('roi-price').value)||1000;
+  var extra=parseFloat(document.getElementById('roi-extra').value)||0;
+  var projectCost=(snap.turbines||getNTurbines())*priceUnit+extra;
+  var totalKwh=Number(snap.netKwh)||0;
+  var windKwh=Number(snap.windNetKwh)||totalKwh;
+  var solarKwh=Number(snap.solarKwh)||0;
+  var annualSaving=totalKwh*priceKwh;
+  var date=new Date().toLocaleDateString('fr-FR');
+  var org=document.getElementById('lead-company').value||'';
+  var contact=document.getElementById('lead-name').value||'';
+
+  function header(pageTitle){
+    doc.setFillColor(11,35,64);doc.rect(0,0,210,28,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('PHILEOLE',16,12);
+    doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text(pageTitle,16,20);
+    doc.setTextColor(25,25,25);
+  }
+  function sectionTitle(text,y){
+    doc.setFillColor(235,242,251);doc.roundedRect(15,y-6,180,10,2,2,'F');
+    doc.setTextColor(11,35,64);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(text,19,y);
+    doc.setTextColor(25,25,25);
+  }
+  function metric(label,value,x,y,w){
+    doc.setDrawColor(220,224,230);doc.roundedRect(x,y,w,20,2,2,'S');
+    doc.setFont('helvetica','normal');doc.setTextColor(110,118,128);doc.setFontSize(7);doc.text(label.toUpperCase(),x+4,y+6);
+    doc.setFont('helvetica','bold');doc.setTextColor(20,25,30);doc.setFontSize(12);doc.text(String(value),x+4,y+14);
+  }
+  function wrapped(text,x,y,width,size){
+    doc.setFontSize(size||9);doc.setFont('helvetica','normal');
+    var lines=doc.splitTextToSize(text,width);doc.text(lines,x,y);return y+lines.length*(size||9)*.38;
+  }
+
+  header('Analyse préliminaire du potentiel énergétique');
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('Synthèse de la simulation',15,42);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,98,108);
+  doc.text('Éditée le '+date,15,49);
+  var addressLines=doc.splitTextToSize(address,180);doc.setTextColor(25,25,25);doc.setFontSize(10);doc.text(addressLines,15,58);
+  var startY=58+addressLines.length*4+6;
+  sectionTitle('Potentiel de la zone',startY);
+  metric('Vitesse moyenne',document.getElementById('v1').textContent,15,startY+8,42);
+  metric('Vitesse maximale',document.getElementById('v0').textContent,61,startY+8,42);
+  metric('Direction dominante',document.getElementById('v2').textContent,107,startY+8,42);
+  metric('Heures calmes',document.getElementById('v3').textContent,153,startY+8,42);
+  var y=startY+36;
+  doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('Typologie du vent :',15,y);
+  doc.setFont('helvetica','normal');doc.text((gustTypeLabel||'—')+(gustMedianRatio?' · ratio médian '+gustMedianRatio.toFixed(2):''),53,y);
+  y+=7;doc.setFont('helvetica','bold');doc.text('Secteur favorable :',15,y);
+  doc.setFont('helvetica','normal');doc.text(Math.round(window.simFavPct||0)+' % du temps',53,y);
+  y+=14;sectionTitle('Configuration simulée',y);
+  y+=11;doc.setFont('helvetica','normal');doc.setFontSize(10);
+  doc.text('Dispositif : '+config,19,y);y+=7;
+  doc.text('Hauteur du centre du rotor : '+height,19,y);y+=7;
+  doc.text('Rendement global : '+Math.round((snap.efficiency||getEff())*100)+' %',19,y);y+=13;
+  sectionTitle('Production annuelle estimée',y);
+  metric('Éolien net',Math.round(windKwh).toLocaleString('fr-FR')+' kWh/an',15,y+8,55);
+  metric('Solaire',Math.round(solarKwh).toLocaleString('fr-FR')+' kWh/an',77,y+8,55);
+  metric('Total',Math.round(totalKwh).toLocaleString('fr-FR')+' kWh/an',139,y+8,56);
+  y+=37;doc.setFillColor(11,35,64);doc.roundedRect(15,y,180,28,3,3,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('PRODUCTION FINALE ESTIMÉE',21,y+9);
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text(Math.round(totalKwh).toLocaleString('fr-FR')+' kWh/an',21,y+21);
+
+  doc.addPage();header('Économie et prochaines étapes');
+  sectionTitle('Retour sur investissement indicatif',42);
+  metric('Coût du projet',Math.round(projectCost).toLocaleString('fr-FR')+' € HT',15,50,55);
+  metric('Économie annuelle',Math.round(annualSaving).toLocaleString('fr-FR')+' €/an',77,50,55);
+  metric('Temps de retour',roi,139,50,56);
+  doc.setFontSize(8);doc.setTextColor(90,98,108);doc.text('Prix de l’électricité utilisé : '+priceKwh.toFixed(2).replace('.',',')+' €/kWh',15,78);
+  sectionTitle('Une estimation à faire confirmer',94);
+  doc.setTextColor(40,45,50);
+  var dataSources=isHybridConfig()?'de données météorologiques historiques ERA5, de données solaires PVGIS et d’hypothèses de fonctionnement du dispositif Philéole':'de données météorologiques historiques ERA5 et d’hypothèses de fonctionnement du dispositif Philéole';
+  var warning='Cette simulation constitue une première estimation réalisée à partir '+dataSources+'. Elle ne constitue ni une garantie de production, ni une proposition commerciale, ni une étude de faisabilité.';
+  var yy=wrapped(warning,19,107,172,9)+5;
+  var warning2='Les conditions réelles du site — implantation, obstacles, relief, environnement bâti, turbulences, orientation, raccordement et contraintes réglementaires — peuvent modifier les performances. Une étude approfondie par les équipes Philéole est nécessaire avant tout projet d’installation.';
+  yy=wrapped(warning2,19,yy,172,9)+10;
+  sectionTitle('Prochaine étape',yy);
+  yy+=12;doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(11,35,64);doc.text('Faites confirmer le potentiel de votre site par Philéole.',19,yy);
+  yy+=9;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(50,55,60);
+  doc.text('Contact : '+contact+(org?' · '+org:''),19,yy);
+  yy+=7;doc.text('Email : '+document.getElementById('lead-email').value,19,yy);
+  doc.setDrawColor(220,224,230);doc.line(15,278,195,278);
+  doc.setFontSize(7);doc.setTextColor(110,118,128);doc.text('Document généré automatiquement à partir de la simulation Philéole.',15,284);
+
+  var safe=(address.split(',')[0]||'site').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase();
+  doc.save('analyse-preliminaire-phileole-'+(safe||'site')+'.pdf');
 }
 document.getElementById('lead-modal').addEventListener('click',function(event){if(event.target===this)closeLeadModal();});
 document.addEventListener('keydown',function(event){if(event.key==='Escape')closeLeadModal();});
