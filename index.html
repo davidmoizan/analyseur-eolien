@@ -197,6 +197,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .roi-result-ref{font-size:12px;color:rgba(255,255,255,.55);}
 .roi-chart-wrap{position:relative;height:160px;margin-bottom:.875rem;}
 .btn-cta{
+  box-sizing:border-box;
   width:100%;padding:1rem;background:var(--navy);color:#fff;
   border:none;border-radius:var(--r-md);font-size:15px;font-weight:700;
   cursor:pointer;text-align:center;margin-top:.5rem;
@@ -266,6 +267,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 </style>
 </head>
 <body>
+<div style="background:#b91c1c;color:#fff;text-align:center;padding:.45rem 1rem;font-size:12px;font-weight:800;letter-spacing:.04em;">MODE TEST · PDF COPIE D’ÉCRAN · NE PAS METTRE EN PRODUCTION</div>
 
 <!-- ── Header ─────────────────────────────────────────────── -->
 <div class="app-header">
@@ -644,7 +646,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+var PDF_SCREEN_TEST_MODE=true;
 function toggleDetail(){
   var btn=document.getElementById('detail-btn');
   var content=document.getElementById('detail-content');
@@ -677,6 +681,7 @@ function openLeadModal(){
   document.getElementById('lead-date').value=new Date().toISOString();
   var feedback=document.getElementById('lead-feedback');
   var btn=document.getElementById('lead-submit');
+  resetLeadDownload();
   feedback.textContent='';feedback.className='form-feedback';
   btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
   document.getElementById('lead-modal').classList.add('open');
@@ -686,6 +691,37 @@ function openLeadModal(){
 function closeLeadModal(){
   document.getElementById('lead-modal').classList.remove('open');
   document.body.style.overflow='';
+}
+var leadPdfObjectUrl='';
+var leadPdfFilename='analyse-preliminaire-phileole.pdf';
+function resetLeadDownload(){
+  if(leadPdfObjectUrl){
+    URL.revokeObjectURL(leadPdfObjectUrl);
+    leadPdfObjectUrl='';
+  }
+  leadPdfFilename='analyse-preliminaire-phileole.pdf';
+  var btn=document.getElementById('lead-submit');
+  if(btn){btn.type='submit';btn.onclick=null;}
+}
+function exposeLeadDownload(pdf){
+  resetLeadDownload();
+  leadPdfObjectUrl=URL.createObjectURL(pdf.blob);
+  leadPdfFilename=pdf.filename;
+  var btn=document.getElementById('lead-submit');
+  btn.type='button';
+  btn.disabled=false;
+  btn.textContent='Télécharger le PDF';
+  btn.onclick=downloadLeadPDF;
+}
+function downloadLeadPDF(){
+  if(!leadPdfObjectUrl)return;
+  var link=document.createElement('a');
+  link.href=leadPdfObjectUrl;
+  link.download=leadPdfFilename;
+  link.style.display='none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 async function submitLeadForm(event){
   event.preventDefault();
@@ -699,26 +735,143 @@ async function submitLeadForm(event){
     btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
     return;
   }
+  var pdf;
   try{
-    var body=new URLSearchParams(new FormData(form)).toString();
-    var response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body});
-    if(!response.ok)throw new Error('HTTP '+response.status);
+    pdf=await generateScreenAnalysisPDF();
   }catch(error){
-    feedback.textContent='Le contact n’a pas été enregistré par Netlify ('+(error&&error.message?error.message:'erreur réseau')+'). Vérifiez que la détection des formulaires est activée, puis redéployez le site.';
+    console.error('Échec de la génération du PDF',error);
+    feedback.textContent='Le PDF n’a pas pu être préparé. Rechargez la page puis réessayez.';
     feedback.className='form-feedback err';
     btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
     return;
   }
+  if(!PDF_SCREEN_TEST_MODE){
+    try{
+      var body=new URLSearchParams(new FormData(form)).toString();
+      var response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+    }catch(error){
+      feedback.textContent='Le contact n’a pas été enregistré par Netlify ('+(error&&error.message?error.message:'erreur réseau')+'). Vérifiez que la détection des formulaires est activée, puis redéployez le site.';
+      feedback.className='form-feedback err';
+      btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+      return;
+    }
+  }
   try{
-    generateAnalysisPDF();
-    feedback.textContent='Votre analyse a été générée. Le téléchargement vient de démarrer.';
+    exposeLeadDownload(pdf);
+    feedback.textContent='Le PDF expérimental est prêt. Si le téléchargement ne démarre pas, cliquez de nouveau sur le bouton.';
     feedback.className='form-feedback ok';
-    btn.textContent='PDF téléchargé';
+    downloadLeadPDF();
   }catch(error){
-    feedback.textContent='Votre contact a bien été enregistré, mais le PDF n’a pas pu être généré. Rechargez la page puis réessayez.';
+    console.error('Échec du téléchargement du PDF',error);
+    feedback.textContent='Votre contact a bien été enregistré, mais le téléchargement n’a pas pu démarrer. Rechargez la page puis réessayez.';
     feedback.className='form-feedback err';
     btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
   }
+}
+
+async function generateScreenAnalysisPDF(){
+  if(!window.jspdf||!window.jspdf.jsPDF)throw new Error('Générateur PDF indisponible');
+  if(!window.html2canvas)throw new Error('Capture d’écran PDF indisponible');
+
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true});
+  var modal=document.getElementById('lead-modal');
+  var detail=document.getElementById('detail-content');
+  var monthly=document.getElementById('monthly-content');
+  var oldModalVisibility=modal.style.visibility;
+  var oldOverflow=document.body.style.overflow;
+  var detailWasOpen=detail.classList.contains('open');
+  var oldMonthlyDisplay=monthly.style.display;
+  var sectionIds=['panel','sim','prod-chain','roi-section'];
+  var address=document.getElementById('lead-address').value||document.getElementById('addr').value||'Site analysé';
+  var date=new Date().toLocaleDateString('fr-FR');
+  var hasPage=false;
+
+  function safeFilename(text){
+    return (text.split(',')[0]||'site').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase()||'site';
+  }
+  function addHeader(sectionTitle){
+    doc.setFillColor(11,35,64);doc.rect(0,0,210,23,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('PHILEOLE',10,10);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('Analyse préliminaire · '+sectionTitle,10,17);
+    doc.setTextColor(70,78,88);doc.setFontSize(7);
+    var addressLines=doc.splitTextToSize(address,145);
+    doc.text(addressLines,10,28);
+    doc.text('Éditée le '+date,200,28,{align:'right'});
+  }
+  function addFooter(pageNumber){
+    doc.setDrawColor(220,224,230);doc.line(10,287,200,287);
+    doc.setFont('helvetica','normal');doc.setTextColor(100,108,118);doc.setFontSize(7);
+    doc.text('Jean-Luc Bodard · jlbodart@phileole.com · +32 (0)475 24 66 70',10,292);
+    doc.text(String(pageNumber),200,292,{align:'right'});
+  }
+  function addCanvasPages(canvas,sectionTitle){
+    var pageWidthMm=190;
+    var contentHeightMm=246;
+    var pxPerMm=canvas.width/pageWidthMm;
+    var maxSlicePx=Math.max(1,Math.floor(contentHeightMm*pxPerMm));
+    var sourceY=0;
+    while(sourceY<canvas.height){
+      if(hasPage)doc.addPage();
+      addHeader(sectionTitle);
+      var sliceHeight=Math.min(maxSlicePx,canvas.height-sourceY);
+      var slice=document.createElement('canvas');
+      slice.width=canvas.width;slice.height=sliceHeight;
+      var ctx=slice.getContext('2d');
+      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,slice.width,slice.height);
+      ctx.drawImage(canvas,0,sourceY,canvas.width,sliceHeight,0,0,canvas.width,sliceHeight);
+      var image=slice.toDataURL('image/jpeg',0.92);
+      var imageHeightMm=sliceHeight/pxPerMm;
+      doc.addImage(image,'JPEG',10,35,pageWidthMm,imageHeightMm,undefined,'FAST');
+      addFooter(doc.getNumberOfPages());
+      hasPage=true;
+      sourceY+=sliceHeight;
+    }
+  }
+
+  try{
+    modal.style.visibility='hidden';
+    document.body.style.overflow='';
+    detail.classList.add('open');
+    monthly.style.display='block';
+    window.dispatchEvent(new Event('resize'));
+    await new Promise(function(resolve){setTimeout(resolve,350);});
+
+    for(var i=0;i<sectionIds.length;i++){
+      var section=document.getElementById(sectionIds[i]);
+      if(!section||getComputedStyle(section).display==='none')continue;
+      var title=section.querySelector('.sec-title');
+      var canvas=await html2canvas(section,{
+        scale:1.5,
+        useCORS:true,
+        allowTaint:false,
+        backgroundColor:'#ffffff',
+        logging:false,
+        imageTimeout:15000,
+        windowWidth:1280,
+        ignoreElements:function(element){
+          return element.classList&&(
+            element.classList.contains('detail-toggle')||
+            element.classList.contains('btn-cta')
+          );
+        }
+      });
+      addCanvasPages(canvas,title?title.textContent.trim():'Analyse');
+    }
+  }finally{
+    modal.style.visibility=oldModalVisibility;
+    document.body.style.overflow=oldOverflow;
+    if(!detailWasOpen)detail.classList.remove('open');
+    monthly.style.display=oldMonthlyDisplay;
+    window.dispatchEvent(new Event('resize'));
+  }
+
+  if(!hasPage)throw new Error('Aucune section à capturer');
+  return {
+    blob:doc.output('blob'),
+    filename:'analyse-phileole-copie-ecran-'+safeFilename(address)+'.pdf'
+  };
 }
 
 function generateAnalysisPDF(){
@@ -739,8 +892,9 @@ function generateAnalysisPDF(){
   var solarKwh=Number(snap.solarKwh)||0;
   var annualSaving=totalKwh*priceKwh;
   var date=new Date().toLocaleDateString('fr-FR');
-  var org=document.getElementById('lead-company').value||'';
-  var contact=document.getElementById('lead-name').value||'';
+  function pdfNumber(value){
+    return Math.round(Number(value)||0).toLocaleString('fr-FR').replace(/[\u00a0\u202f]/g,' ');
+  }
 
   function header(pageTitle){
     doc.setFillColor(11,35,64);doc.rect(0,0,210,28,'F');
@@ -785,17 +939,17 @@ function generateAnalysisPDF(){
   doc.text('Hauteur du centre du rotor : '+height,19,y);y+=7;
   doc.text('Rendement global : '+Math.round((snap.efficiency||getEff())*100)+' %',19,y);y+=13;
   sectionTitle('Production annuelle estimée',y);
-  metric('Éolien net',Math.round(windKwh).toLocaleString('fr-FR')+' kWh/an',15,y+8,55);
-  metric('Solaire',Math.round(solarKwh).toLocaleString('fr-FR')+' kWh/an',77,y+8,55);
-  metric('Total',Math.round(totalKwh).toLocaleString('fr-FR')+' kWh/an',139,y+8,56);
+  metric('Éolien net',pdfNumber(windKwh)+' kWh/an',15,y+8,55);
+  metric('Solaire',pdfNumber(solarKwh)+' kWh/an',77,y+8,55);
+  metric('Total',pdfNumber(totalKwh)+' kWh/an',139,y+8,56);
   y+=37;doc.setFillColor(11,35,64);doc.roundedRect(15,y,180,28,3,3,'F');
   doc.setTextColor(255,255,255);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('PRODUCTION FINALE ESTIMÉE',21,y+9);
-  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text(Math.round(totalKwh).toLocaleString('fr-FR')+' kWh/an',21,y+21);
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text(pdfNumber(totalKwh)+' kWh/an',21,y+21);
 
   doc.addPage();header('Économie et prochaines étapes');
   sectionTitle('Retour sur investissement indicatif',42);
-  metric('Coût du projet',Math.round(projectCost).toLocaleString('fr-FR')+' € HT',15,50,55);
-  metric('Économie annuelle',Math.round(annualSaving).toLocaleString('fr-FR')+' €/an',77,50,55);
+  metric('Coût du projet',pdfNumber(projectCost)+' € HT',15,50,55);
+  metric('Économie annuelle',pdfNumber(annualSaving)+' €/an',77,50,55);
   metric('Temps de retour',roi,139,50,56);
   doc.setFontSize(8);doc.setTextColor(90,98,108);doc.text('Prix de l’électricité utilisé : '+priceKwh.toFixed(2).replace('.',',')+' €/kWh',15,78);
   sectionTitle('Une estimation à faire confirmer',94);
@@ -808,13 +962,17 @@ function generateAnalysisPDF(){
   sectionTitle('Prochaine étape',yy);
   yy+=12;doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(11,35,64);doc.text('Faites confirmer le potentiel de votre site par Philéole.',19,yy);
   yy+=9;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(50,55,60);
-  doc.text('Contact : '+contact+(org?' · '+org:''),19,yy);
-  yy+=7;doc.text('Email : '+document.getElementById('lead-email').value,19,yy);
+  doc.text('Contact : Jean-Luc Bodard',19,yy);
+  yy+=7;doc.text('jlbodart@phileole.com',19,yy);
+  yy+=7;doc.text('+32 (0)475 24 66 70',19,yy);
   doc.setDrawColor(220,224,230);doc.line(15,278,195,278);
   doc.setFontSize(7);doc.setTextColor(110,118,128);doc.text('Document généré automatiquement à partir de la simulation Philéole.',15,284);
 
   var safe=(address.split(',')[0]||'site').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase();
-  doc.save('analyse-preliminaire-phileole-'+(safe||'site')+'.pdf');
+  return {
+    blob:doc.output('blob'),
+    filename:'analyse-preliminaire-phileole-'+(safe||'site')+'.pdf'
+  };
 }
 document.getElementById('lead-modal').addEventListener('click',function(event){if(event.target===this)closeLeadModal();});
 document.addEventListener('keydown',function(event){if(event.key==='Escape')closeLeadModal();});
