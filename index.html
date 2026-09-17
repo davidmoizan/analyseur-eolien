@@ -693,16 +693,29 @@ async function submitLeadForm(event){
   var btn=document.getElementById('lead-submit');
   var feedback=document.getElementById('lead-feedback');
   btn.disabled=true;btn.textContent='Préparation du PDF…';feedback.className='form-feedback';
+  if(!window.jspdf||!window.jspdf.jsPDF){
+    feedback.textContent='Le générateur PDF ne s’est pas chargé. Rechargez la page puis réessayez.';
+    feedback.className='form-feedback err';
+    btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+    return;
+  }
   try{
     var body=new URLSearchParams(new FormData(form)).toString();
-    var response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:body});
-    if(!response.ok)throw new Error('Échec de l’envoi');
+    var response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+  }catch(error){
+    feedback.textContent='Le contact n’a pas été enregistré par Netlify ('+(error&&error.message?error.message:'erreur réseau')+'). Vérifiez que la détection des formulaires est activée, puis redéployez le site.';
+    feedback.className='form-feedback err';
+    btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+    return;
+  }
+  try{
     generateAnalysisPDF();
     feedback.textContent='Votre analyse a été générée. Le téléchargement vient de démarrer.';
     feedback.className='form-feedback ok';
     btn.textContent='PDF téléchargé';
   }catch(error){
-    feedback.textContent='Le téléchargement n’a pas abouti. Vérifiez votre connexion puis réessayez.';
+    feedback.textContent='Votre contact a bien été enregistré, mais le PDF n’a pas pu être généré. Rechargez la page puis réessayez.';
     feedback.className='form-feedback err';
     btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
   }
