@@ -197,7 +197,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .roi-result-ref{font-size:12px;color:rgba(255,255,255,.55);}
 .roi-chart-wrap{position:relative;height:160px;margin-bottom:.875rem;}
 .btn-cta{
-  display:block;box-sizing:border-box;text-decoration:none;
+  box-sizing:border-box;
   width:100%;padding:1rem;background:var(--navy);color:#fff;
   border:none;border-radius:var(--r-md);font-size:15px;font-weight:700;
   cursor:pointer;text-align:center;margin-top:.5rem;
@@ -639,7 +639,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <div style="font-size:11px;line-height:1.5;color:var(--muted);background:var(--bg);padding:.7rem;border-radius:var(--r-sm);margin-top:.875rem;">Cette simulation préalable et simplifiée ne remplace pas une étude de faisabilité. Les équipes Philéole doivent confirmer le potentiel réel du site avant tout projet.</div>
       <label class="consent-row"><input type="checkbox" name="consentement" value="oui" required> <span>J’accepte que Philéole utilise ces informations pour me transmettre cette analyse et me recontacter au sujet de mon projet.</span></label>
       <button class="btn-cta" id="lead-submit" type="submit" style="margin-top:0;">Télécharger mon analyse PDF</button>
-      <a class="btn-cta" id="lead-download" href="#" download hidden style="margin-top:.75rem;">Télécharger le PDF maintenant</a>
       <div class="form-feedback" id="lead-feedback" role="status" aria-live="polite"></div>
     </form>
   </div>
@@ -681,7 +680,7 @@ function openLeadModal(){
   var btn=document.getElementById('lead-submit');
   resetLeadDownload();
   feedback.textContent='';feedback.className='form-feedback';
-  btn.hidden=false;btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+  btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
   document.getElementById('lead-modal').classList.add('open');
   document.body.style.overflow='hidden';
   setTimeout(function(){document.getElementById('lead-name').focus();},0);
@@ -691,26 +690,35 @@ function closeLeadModal(){
   document.body.style.overflow='';
 }
 var leadPdfObjectUrl='';
+var leadPdfFilename='analyse-preliminaire-phileole.pdf';
 function resetLeadDownload(){
-  var link=document.getElementById('lead-download');
   if(leadPdfObjectUrl){
     URL.revokeObjectURL(leadPdfObjectUrl);
     leadPdfObjectUrl='';
   }
-  if(link){
-    link.hidden=true;
-    link.removeAttribute('href');
-    link.removeAttribute('download');
-  }
+  leadPdfFilename='analyse-preliminaire-phileole.pdf';
+  var btn=document.getElementById('lead-submit');
+  if(btn){btn.type='submit';btn.onclick=null;}
 }
 function exposeLeadDownload(pdf){
-  var link=document.getElementById('lead-download');
   resetLeadDownload();
   leadPdfObjectUrl=URL.createObjectURL(pdf.blob);
+  leadPdfFilename=pdf.filename;
+  var btn=document.getElementById('lead-submit');
+  btn.type='button';
+  btn.disabled=false;
+  btn.textContent='Télécharger le PDF';
+  btn.onclick=downloadLeadPDF;
+}
+function downloadLeadPDF(){
+  if(!leadPdfObjectUrl)return;
+  var link=document.createElement('a');
   link.href=leadPdfObjectUrl;
-  link.download=pdf.filename;
-  link.hidden=false;
-  return link;
+  link.download=leadPdfFilename;
+  link.style.display='none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 async function submitLeadForm(event){
   event.preventDefault();
@@ -745,11 +753,10 @@ async function submitLeadForm(event){
     return;
   }
   try{
-    var downloadLink=exposeLeadDownload(pdf);
-    feedback.textContent='Votre contact a été enregistré et votre PDF est prêt. Si le téléchargement ne démarre pas, cliquez sur « Télécharger le PDF maintenant ».';
+    exposeLeadDownload(pdf);
+    feedback.textContent='Votre contact a été enregistré et votre PDF est prêt. Si le téléchargement ne démarre pas, cliquez de nouveau sur le bouton.';
     feedback.className='form-feedback ok';
-    btn.hidden=true;
-    downloadLink.click();
+    downloadLeadPDF();
   }catch(error){
     console.error('Échec du téléchargement du PDF',error);
     feedback.textContent='Votre contact a bien été enregistré, mais le téléchargement n’a pas pu démarrer. Rechargez la page puis réessayez.';
@@ -776,8 +783,9 @@ function generateAnalysisPDF(){
   var solarKwh=Number(snap.solarKwh)||0;
   var annualSaving=totalKwh*priceKwh;
   var date=new Date().toLocaleDateString('fr-FR');
-  var org=document.getElementById('lead-company').value||'';
-  var contact=document.getElementById('lead-name').value||'';
+  function pdfNumber(value){
+    return Math.round(Number(value)||0).toLocaleString('fr-FR').replace(/[\u00a0\u202f]/g,' ');
+  }
 
   function header(pageTitle){
     doc.setFillColor(11,35,64);doc.rect(0,0,210,28,'F');
@@ -822,17 +830,17 @@ function generateAnalysisPDF(){
   doc.text('Hauteur du centre du rotor : '+height,19,y);y+=7;
   doc.text('Rendement global : '+Math.round((snap.efficiency||getEff())*100)+' %',19,y);y+=13;
   sectionTitle('Production annuelle estimée',y);
-  metric('Éolien net',Math.round(windKwh).toLocaleString('fr-FR')+' kWh/an',15,y+8,55);
-  metric('Solaire',Math.round(solarKwh).toLocaleString('fr-FR')+' kWh/an',77,y+8,55);
-  metric('Total',Math.round(totalKwh).toLocaleString('fr-FR')+' kWh/an',139,y+8,56);
+  metric('Éolien net',pdfNumber(windKwh)+' kWh/an',15,y+8,55);
+  metric('Solaire',pdfNumber(solarKwh)+' kWh/an',77,y+8,55);
+  metric('Total',pdfNumber(totalKwh)+' kWh/an',139,y+8,56);
   y+=37;doc.setFillColor(11,35,64);doc.roundedRect(15,y,180,28,3,3,'F');
   doc.setTextColor(255,255,255);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('PRODUCTION FINALE ESTIMÉE',21,y+9);
-  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text(Math.round(totalKwh).toLocaleString('fr-FR')+' kWh/an',21,y+21);
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text(pdfNumber(totalKwh)+' kWh/an',21,y+21);
 
   doc.addPage();header('Économie et prochaines étapes');
   sectionTitle('Retour sur investissement indicatif',42);
-  metric('Coût du projet',Math.round(projectCost).toLocaleString('fr-FR')+' € HT',15,50,55);
-  metric('Économie annuelle',Math.round(annualSaving).toLocaleString('fr-FR')+' €/an',77,50,55);
+  metric('Coût du projet',pdfNumber(projectCost)+' € HT',15,50,55);
+  metric('Économie annuelle',pdfNumber(annualSaving)+' €/an',77,50,55);
   metric('Temps de retour',roi,139,50,56);
   doc.setFontSize(8);doc.setTextColor(90,98,108);doc.text('Prix de l’électricité utilisé : '+priceKwh.toFixed(2).replace('.',',')+' €/kWh',15,78);
   sectionTitle('Une estimation à faire confirmer',94);
@@ -845,8 +853,9 @@ function generateAnalysisPDF(){
   sectionTitle('Prochaine étape',yy);
   yy+=12;doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(11,35,64);doc.text('Faites confirmer le potentiel de votre site par Philéole.',19,yy);
   yy+=9;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(50,55,60);
-  doc.text('Contact : '+contact+(org?' · '+org:''),19,yy);
-  yy+=7;doc.text('Email : '+document.getElementById('lead-email').value,19,yy);
+  doc.text('Contact : Jean-Luc Bodard',19,yy);
+  yy+=7;doc.text('jlbodart@phileole.com',19,yy);
+  yy+=7;doc.text('+32 (0)475 24 66 70',19,yy);
   doc.setDrawColor(220,224,230);doc.line(15,278,195,278);
   doc.setFontSize(7);doc.setTextColor(110,118,128);doc.text('Document généré automatiquement à partir de la simulation Philéole.',15,284);
 
