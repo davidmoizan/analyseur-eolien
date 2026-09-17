@@ -1,71 +1,136 @@
-/**
- * Proxy PVGIS API — contourne la restriction CORS de PVGIS
- * Aucune clé API requise, PVGIS est totalement gratuit
- */
-exports.handler = async (event) => {
-  const CORS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS'
+const PVGIS_URL = 'https://re.jrc.ec.europa.eu/api/v5_3/PVcalc';
+
+function reply(statusCode, body) {
+  return {
+    statusCode,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': statusCode === 200
+        ? 'public, max-age=86400'
+        : 'no-store',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    },
+    body: JSON.stringify(body)
   };
+}
 
+function numberParam(params, name, min, max, fallback) {
+  const raw = params[name];
+
+  if (raw === undefined || raw === '') {
+    return fallback;
+  }
+
+  const value = Number(raw);
+
+  if (!Number.isFinite(value) || value < min || value > max) {
+    throw new Error(`Paramètre ${name} invalide`);
+  }
+
+  return value;
+}
+
+exports.handler = async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: CORS, body: '' };
+    return reply(204, {});
   }
 
-  /* Paramètres transmis depuis le frontend */
-  const p = event.queryStringParameters || {};
-  const required = ['lat','lon','peakpower'];
-  for (const r of required) {
-    if (!p[r]) {
-      return {
-        statusCode: 400,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: `Paramètre manquant : ${r}` })
-      };
-    }
+  if (event.httpMethod !== 'GET') {
+    return reply(405, {
+      error: 'Méthode non autorisée'
+    });
   }
-
-  /* Construction URL PVGIS v5.3 — PVcalc */
-  const pvgisParams = new URLSearchParams({
-    lat:          p.lat,
-    lon:          p.lon,
-    peakpower:    p.peakpower,
-    loss:         p.loss        || '14',
-    angle:        p.angle       || '10',
-    aspect:       p.aspect      || '0',
-    raddatabase:  'PVGIS-SARAH3',
-    pvtechchoice: 'crystSi',
-    mountingplace:'free',
-    outputformat: 'json',
-    browser:      '0'
-  });
-
-  const url = `https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?${pvgisParams}`;
 
   try {
-    const resp = await fetch(url);
-    const data = await resp.json();
+    const q = event.queryStringParameters || {};
 
-    if (!resp.ok) {
-      return {
-        statusCode: resp.status,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Erreur PVGIS', detail: data })
+    const lat = numberParam(q, 'lat', -90, 90);
+    const lon = numberParam(q, 'lon', -180, 180);
+    const peakpower = numberParam(
+      q,
+      'peakpower',
+      0.01,
+      1000,
+      0.9
+    );
+    const loss = numberParam(q, 'loss', 0, 100, 14);
+    const angle = numberParam(q, 'angle', 0, 90, 10);
+    const aspect = numberParam(
+      q,
+      'aspect',
+      -180,
+      180,
+      0
+    );
+
+    if (lat === undefined || lon === undefined) {
+      throw new Error('Latitude et longitude requises');
+    }
+
+    const url = new URL(PVGIS_URL);
+
+    const params = {
+      lat,
+      lon,
+      peakpower,
+      loss,
+      angle,
+      aspect,
+      outputformat: 'json',
+      pvtechchoice: 'crystSi',
+      mountingplace: 'free',
+      raddatabase: 'PVGIS-SARAH3',
+      browser: 0
+    };
+
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.set(key, String(value));
+    });
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    let response;
+
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/json'
+        }
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const text = await response.text();
+    let data;
+
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      data = {
+        error: text.slice(0, 500)
       };
     }
 
-    return {
-      statusCode: 200,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    };
+    if (!response.ok) {
+      return reply(response.status, {
+        error: 'Erreur PVGIS',
+        details: data
+      });
+    }
 
-  } catch (e) {
-    return {
-      statusCode: 502,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Erreur proxy PVGIS : ' + e.message })
-    };
+    return reply(200, data);
+  } catch (error) {
+    const timeout = error && error.name === 'AbortError';
+
+    return reply(timeout ? 504 : 400, {
+      error: timeout
+        ? 'Délai PVGIS dépassé'
+        : error.message
+    });
   }
 };
