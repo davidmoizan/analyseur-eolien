@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- PHILEOLE — VERSION CORRIGEE V3 — 17 SEPTEMBRE 2026 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -22,7 +23,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 /* ── Header ── */
 .app-header{
   background:var(--navy);padding:.875rem 1.25rem;
-  display:flex;align-items:center;gap:.75rem;position:sticky;top:0;z-index:200;
+  display:flex;align-items:center;gap:.75rem;position:sticky;top:0;z-index:5000;
 }
 .app-logo{font-size:15px;font-weight:800;color:#fff;white-space:nowrap;flex-shrink:0;}
 .app-logo span{font-weight:400;color:rgba(255,255,255,.55);margin-left:4px;font-size:12px;}
@@ -47,7 +48,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   display:none;
   position:absolute;top:calc(100% + 4px);left:0;right:0;min-width:280px;
   background:#fff;border-radius:var(--r-md);box-shadow:var(--sh-md);
-  border:1px solid var(--border-med);z-index:1000;overflow:hidden;white-space:normal;
+  border:1px solid var(--border-med);z-index:6000;overflow-y:auto;max-height:360px;white-space:normal;
 }
 .si{display:flex;align-items:flex-start;gap:.625rem;padding:.75rem 1rem;cursor:pointer;border-bottom:1px solid var(--border);background:#fff;}
 .si:last-child{border-bottom:0;}
@@ -77,14 +78,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 /* ── Section 1 : Potentiel ── */
 .pot-layout{display:grid;grid-template-columns:1fr;gap:.75rem;}
 @media(min-width:640px){.pot-layout{grid-template-columns:1fr 1fr;align-items:start;}}
-.map-wrap{position:relative;border-radius:var(--r-md);overflow:hidden;}
+.map-wrap{position:relative;z-index:1;border-radius:var(--r-md);overflow:hidden;}
 #map{height:280px;width:100%;background:#e8eaf0;}
 @media(min-width:640px){#map{height:320px;}}
-#rose-canvas{
-  position:absolute;bottom:12px;left:12px;
-  width:120px;height:120px;pointer-events:none;
-  border-radius:50%;
-}
 .map-label{
   position:absolute;bottom:10px;right:10px;
   background:rgba(255,255,255,.85);font-size:10px;
@@ -100,7 +96,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 #mch{max-height:110px;}
 
 /* Secteur optimal */
-.s1-cards{display:grid;grid-template-columns:1fr;gap:.75rem;margin-top:.75rem;}
+.s1-cards{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem;}
+.s1-badge{float:right;background:rgba(26,148,105,.14);color:var(--teal);font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:.5rem;}
 .s1-card{background:var(--card);border-radius:var(--r-md);padding:.875rem 1rem;border:1px solid var(--border);box-shadow:var(--sh);}
 .s1-card-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.375rem;}
 .s1-card-val{font-size:18px;font-weight:800;color:var(--text);}
@@ -152,6 +149,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   padding:.75rem .875rem;background:var(--bg);border-radius:var(--r-sm);
 }
 .prod-step.bonus{background:#f0fdf8;}
+#chain-gust-row{background:#fffbeb;}
+.prod-step.inactive{background:var(--bg);opacity:.68;}
 .step-num{
   width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;
   display:flex;align-items:center;justify-content:center;
@@ -170,14 +169,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .prod-finale-lbl{font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.3px;}
 .prod-finale-val{font-size:22px;font-weight:900;color:#fff;}
 .prod-ref{font-size:11px;color:var(--muted);text-align:right;}
-.prod-table{width:100%;border-collapse:collapse;font-size:12px;min-width:650px;}
+.prod-table{width:100%;border-collapse:collapse;font-size:12px;min-width:560px;}
 .prod-table th,.prod-table td{padding:.55rem .75rem;border-bottom:1px solid var(--border);}
 .prod-table th{text-align:right;white-space:nowrap;}
 .prod-table th:first-child,.prod-table td:first-child{text-align:left;}
 .prod-table td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;}
 .prod-table tbody tr:nth-child(even){background:#fafafa;}
 .td-real{color:var(--blue);font-weight:700;}
-.td-bonus{font-weight:700;}
 
 /* ── Section 4 : ROI ── */
 .sec-header.purple{background:linear-gradient(135deg,#5b21b6,#6d28d9);}
@@ -201,7 +199,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   cursor:pointer;text-align:center;margin-top:.5rem;
 }
 .btn-cta:hover{background:#0a1a30;}
-.modal-backdrop{position:fixed;inset:0;background:rgba(11,35,64,.68);z-index:2000;display:none;align-items:center;justify-content:center;padding:1rem;}
+.modal-backdrop{position:fixed;inset:0;background:rgba(11,35,64,.68);z-index:10000;display:none;align-items:center;justify-content:center;padding:1rem;}
 .modal-backdrop.open{display:flex;}
 .modal-card{width:min(520px,100%);max-height:calc(100vh - 2rem);overflow-y:auto;background:#fff;border-radius:var(--r-lg);box-shadow:0 20px 60px rgba(0,0,0,.28);padding:1.25rem;}
 .modal-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;margin-bottom:1rem;}
@@ -233,7 +231,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   .search-wrap{width:100%;}
   .search-box input{font-size:16px;min-height:44px;}
   .btn-analyse{min-height:44px;padding:.625rem .875rem;}
-  #sugg{position:fixed;top:114px;left:.75rem;right:.75rem;min-width:0;max-height:45vh;overflow-y:auto;}
+  #sugg{position:absolute;top:calc(100% + 4px);left:0;right:0;min-width:0;max-height:45vh;overflow-y:auto;}
   .app{padding:.75rem .625rem 1.5rem;}
   .sec-body{padding:.875rem;}
   .sec-header{padding:.75rem .875rem;}
@@ -250,6 +248,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   .roi-chart-wrap{height:210px;}
   .lead-grid{grid-template-columns:1fr;}
   .lead-grid .full{grid-column:auto;}
+  .s1-cards{grid-template-columns:1fr;}
+  .prod-table{font-size:11px;min-width:540px;}
+  .prod-table th,.prod-table td{padding:.5rem .55rem;}
 }
 
 @media(max-width:390px){
@@ -291,7 +292,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <!-- Map with rose overlay -->
       <div class="map-wrap">
         <div id="map"></div>
-        <canvas id="rose-canvas" aria-label="Rose des vents" style="display:none;"></canvas>
         <div id="map-placeholder" style="position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);pointer-events:none;z-index:400;padding:.55rem .8rem;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.16);width:max-content;max-width:calc(100% - 32px);">
           <div style="text-align:center;color:#64748b;font-size:12px;">
             Saisissez une adresse pour lancer l’analyse
@@ -314,8 +314,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       </div>
     </div>
 
-    <!-- Secteur de vent optimal -->
+    <!-- Typologie et secteur de vent optimal -->
     <div class="s1-cards" style="margin-top:.875rem;">
+      <div class="s1-card" id="s1-typology-card" style="display:none;">
+        <div class="s1-card-lbl">Typologie du vent</div>
+        <div class="s1-card-val"><span id="s1-wind-type">—</span><span class="s1-badge" id="s1-gust-bonus">—</span></div>
+        <div class="s1-card-sub">Ratio médian rafale / vent moyen : <strong id="s1-gust-ratio">—</strong></div>
+      </div>
       <div class="s1-card" id="s1-sector-card" style="display:none;">
         <div class="s1-card-lbl">⊙ Secteur de vent optimal</div>
         <div class="s1-card-val"><span id="s1-fav-pct">—</span> % du temps</div>
@@ -414,14 +419,32 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <div class="prod-step">
         <div class="step-num">1</div>
         <div class="step-info">
-          <div class="step-title">Production brute estimée</div>
+          <div class="step-title">Production brute de référence</div>
           <div class="step-sub">Courbe Philéole × données ERA5 · <span id="sk-hours">—</span> h/an productives à <span id="sk-height-label">10 m</span></div>
         </div>
         <div class="step-val" id="sk-real">—</div>
       </div>
-      <!-- Step 2 : rendement -->
+      <!-- Step 2 : conception du mur -->
+      <div class="prod-step bonus" id="chain-mur-row">
+        <div class="step-num" style="background:var(--teal);">2</div>
+        <div class="step-info">
+          <div class="step-title">Conception Mur</div>
+          <div class="step-sub" id="chain-mur-sub">Organisation des éoliennes et réflecteurs dans le secteur favorable</div>
+        </div>
+        <div class="step-val plus" id="chain-mur-gain">—</div>
+      </div>
+      <!-- Step 3 : typologie du vent -->
+      <div class="prod-step bonus" id="chain-gust-row">
+        <div class="step-num" style="background:var(--amber);">3</div>
+        <div class="step-info">
+          <div class="step-title">Bonus Vent · <span id="chain-gust-type">Analyse en cours</span></div>
+          <div class="step-sub" id="chain-gust-sub">Coefficient déterminé selon la typologie du vent</div>
+        </div>
+        <div class="step-val plus" id="chain-gust-gain">—</div>
+      </div>
+      <!-- Step 4 : rendement -->
       <div class="prod-step">
-        <div class="step-num" style="background:var(--purple);" id="chain-step-eff">2</div>
+        <div class="step-num" style="background:var(--purple);">4</div>
         <div class="step-info">
           <div class="step-title">Rendement global à <span id="sk-eff-label">80</span> %</div>
           <div class="step-sub">Production nette après pertes</div>
@@ -456,11 +479,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         <thead id="prod-thead">
           <tr style="background:var(--navy);color:#fff;">
             <th style="padding:.5rem .75rem;text-align:left;">Mois</th>
-            <th style="padding:.5rem .75rem;text-align:right;">H vent</th>
-            <th style="padding:.5rem .75rem;text-align:right;">Vent moy. (<span id="th-height">10m</span>)</th>
-            <th>Mensuelle nette</th>
-            <th style="color:#60d4a0;">Horaire nette</th>
-            <th style="padding:.5rem .75rem;text-align:right;">Écart</th>
+            <th>Heures (h)</th>
+            <th>Vent moy. (<span id="th-height">10 m</span>)</th>
+            <th>Base mensuelle (kWh)</th>
+            <th style="color:#60d4a0;">Base horaire (kWh)</th>
           </tr>
         </thead>
         <tbody id="prod-tbody"></tbody>
@@ -471,14 +493,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
             <td style="padding:.5rem .75rem;text-align:right;" id="ft-avg2">—</td>
             <td style="padding:.5rem .75rem;text-align:right;" id="ft-simple">—</td>
             <td style="padding:.5rem .75rem;text-align:right;color:#60d4a0;" id="ft-real">—</td>
-            <td style="padding:.5rem .75rem;text-align:right;" id="ft-bonus">—</td>
           </tr>
         </tfoot>
       </table>
       <div style="font-size:11px;color:var(--muted);margin-top:.75rem;line-height:1.6;padding:.625rem;background:var(--bg);border-radius:var(--r-sm);" id="sim-note-text">
-        Production calculée à partir de la courbe de puissance attendue fournie par Philéole et des vitesses horaires ERA5, interpolées à la hauteur choisie.
-        <strong>Estimation mensuelle</strong> : puissance correspondant au vent moyen des heures productives × nombre d’heures.
-        <strong>Simulation horaire</strong> : somme de la puissance calculée pour chaque heure. Les deux colonnes intègrent le rendement global sélectionné.
+        <strong>Base mensuelle</strong> : puissance correspondant au vent moyen des heures productives × nombre d’heures.
+        <strong>Base horaire</strong> : somme de la puissance calculée heure par heure avec la courbe Philéole. Ces deux bases sont présentées avant les gains de conception, le bonus Vent et le rendement.
       </div>
     </div>
   </div>
@@ -681,13 +701,14 @@ var MUR_GAIN_DEFLECTOR=1.15;
 var MUR_GAIN_FAVORABLE=MUR_GAIN_STRUCT*MUR_GAIN_DEFLECTOR;
 var MUR_FAVORABLE_ANGLE=45;
 var GUST_CLASSES=[
-  {maxRatio:1.30,bonus:1.10},
-  {maxRatio:1.50,bonus:1.25},
-  {maxRatio:1.70,bonus:1.40},
-  {maxRatio:999,bonus:1.60}
+  {maxRatio:1.30,label:'Vent stable',bonus:1.10},
+  {maxRatio:1.50,label:'Vent fluctuant',bonus:1.25},
+  {maxRatio:1.70,label:'Vent instable',bonus:1.40},
+  {maxRatio:999,label:'Vent rafaleux',bonus:1.60}
 ];
 var gustBonusCoeff=1.0;
 var gustMedianRatio=null;
+var gustTypeLabel='Analyse en cours';
 var simMonthlyAvg=null, simTotalYears=1;
 var SIM_A_UNIT=PHY_A;
 
@@ -909,12 +930,13 @@ async function runAnalysis(lat,lon,dn){
     window.simFavH=(window._favSecH||0)/simTotalYears; /* h/an correct */
     gustBonusCoeff=1.0;
     gustMedianRatio=null;
+    gustTypeLabel='Analyse en cours';
     window.simGusts=null;
+    document.getElementById('s1-typology-card').style.display='none';
     /* Init inputs and run first computation */
     setConfig('turbine'); /* init configurateur */
     onHeightChange();
     var ph=document.getElementById('map-placeholder'); if(ph)ph.style.display='none';
-    var rc=document.getElementById('rose-canvas'); if(rc)rc.style.display='block';
     document.getElementById('sim').style.display='block';
     document.getElementById('roi-section').style.display='block';
     if(gmap){setTimeout(function(){gmap.invalidateSize();},200);}
@@ -946,18 +968,22 @@ function updateMap(lat,lon,scts,ssps,total,avg,domDir,place,ds){
     .addTo(gmap)
     .bindPopup(
       '<strong style="font-size:14px;display:block;margin-bottom:4px;">'+place.split(',')[0]+'</strong>'
-      +'Vent moyen : <strong>'+avg.toFixed(1)+' m/s</strong><br>'
-      +'Direction dominante : <strong>'+domDir+'</strong>',
+      +'Vitesse moy. : <strong>'+avg.toFixed(1)+' m/s</strong><br>'
+      +'Dir. dominante : <strong>'+domDir+'</strong>',
       {offset:[0,-4]}
     ).openPopup();
 
-  /* Rose des vents : overlay canvas absolu sur la carte */
-  var oc=document.getElementById('rose-canvas');
-  if(oc){
-    oc.width=200;oc.height=200;
-    drawRose(oc,scts,ssps,total,ds);
-    oc.style.opacity='0.85';
-  }
+  /* Rose des vents historique : calque Leaflet centré sur le point analysé. */
+  var size=320,canvas=document.createElement('canvas');
+  canvas.width=size;canvas.height=size;
+  drawRose(canvas,scts,ssps,total,ds);
+  roseMk=L.marker([lat,lon],{
+    icon:L.divIcon({
+      html:'<img src="'+canvas.toDataURL()+'" width="'+size+'" height="'+size+'" style="opacity:.7;pointer-events:none;" alt="Rose des vents">',
+      iconSize:[size,size],iconAnchor:[size/2,size/2],className:'wri'
+    }),
+    interactive:false,zIndexOffset:-1000
+  }).addTo(gmap);
 }
 
 function drawRose(cv,counts,sums,total,domSec){
@@ -1198,19 +1224,25 @@ function computeProduction(N){
     totalAdjustedWh+=p*wallCoeff;
   }
 
-  var baseAnnualGrossKwh=totalBaseWh/simTotalYears*N/1000;
-  var hourlyAnnualGrossKwh=totalAdjustedWh/simTotalYears*N/1000*gustBonusCoeff;
-  var hourlyMonthNetKwh=hourlyMonthAdjustedWh.map(function(w){return w/simTotalYears*N/1000*gustBonusCoeff*eff;});
+  var hourlyMonthBaseKwh=hourlyMonthBaseWh.map(function(w){return w/simTotalYears*N/1000;});
+  var baseAnnualGrossKwh=hourlyMonthBaseKwh.reduce(function(a,b){return a+b;},0);
+  var wallAdjustedAnnualGrossKwh=totalAdjustedWh/simTotalYears*N/1000;
+  var hourlyAnnualGrossKwh=wallAdjustedAnnualGrossKwh*gustBonusCoeff;
   var hourlyAnnualNetKwh=hourlyAnnualGrossKwh*eff;
 
   var monthAvgVh=monthH.map(function(cnt,m){return cnt>0?monthSumVh[m]/cnt:0;});
-  var simpleMonthNetKwh=monthAvgVh.map(function(v,m){
+  var simpleMonthBaseKwh=monthAvgVh.map(function(v,m){
     var productiveHours=monthH[m]/simTotalYears;
-    var wallEnergyFactor=hourlyMonthBaseWh[m]>0?hourlyMonthAdjustedWh[m]/hourlyMonthBaseWh[m]:1;
-    return calcPower(v)*productiveHours*N/1000*wallEnergyFactor*gustBonusCoeff*eff;
+    return calcPower(v)*productiveHours*N/1000;
   });
+  var simpleMonthNetKwh=simpleMonthBaseKwh.map(function(base,m){
+    var wallEnergyFactor=hourlyMonthBaseWh[m]>0?hourlyMonthAdjustedWh[m]/hourlyMonthBaseWh[m]:1;
+    return base*wallEnergyFactor*gustBonusCoeff*eff;
+  });
+  var simpleAnnualBaseKwh=simpleMonthBaseKwh.reduce(function(a,b){return a+b;},0);
   var simpleAnnualNetKwh=simpleMonthNetKwh.reduce(function(a,b){return a+b;},0);
-  var annualGap=simpleAnnualNetKwh>0?((hourlyAnnualNetKwh-simpleAnnualNetKwh)/simpleAnnualNetKwh*100):0;
+  var wallGainKwh=wallAdjustedAnnualGrossKwh-baseAnnualGrossKwh;
+  var gustGainKwh=hourlyAnnualGrossKwh-wallAdjustedAnnualGrossKwh;
 
   lastRealKwh=hourlyAnnualNetKwh;
   lastAvgKwh=simpleAnnualNetKwh;
@@ -1226,12 +1258,27 @@ function computeProduction(N){
   };
 
   document.getElementById('prod-chain').style.display='block';
-  document.getElementById('sk-real').textContent=fmtKwh(hourlyAnnualGrossKwh);
-  document.getElementById('chain-step-eff').textContent='2';
+  document.getElementById('sk-real').textContent=fmtKwh(baseAnnualGrossKwh);
+  document.getElementById('chain-mur-row').classList.toggle('inactive',!isWall);
+  if(isWall){
+    document.getElementById('chain-mur-sub').textContent='Organisation ×1,17 · réflecteurs ×1,15 · '+Math.round(window.simFavPct||0)+' % du temps dans le secteur favorable';
+    document.getElementById('chain-mur-gain').textContent='+'+fmtKwh(wallGainKwh);
+  }else{
+    document.getElementById('chain-mur-sub').textContent='Non appliqué à la configuration sélectionnée';
+    document.getElementById('chain-mur-gain').textContent='—';
+  }
+  document.getElementById('chain-gust-type').textContent=gustTypeLabel;
+  if(gustMedianRatio===null){
+    document.getElementById('chain-gust-sub').textContent='Analyse de la variabilité ERA5 en cours';
+    document.getElementById('chain-gust-gain').textContent='…';
+  }else{
+    document.getElementById('chain-gust-sub').textContent='Ratio médian : '+gustMedianRatio.toFixed(2)+' · coefficient ×'+gustBonusCoeff.toFixed(2);
+    document.getElementById('chain-gust-gain').textContent='+'+fmtKwh(gustGainKwh);
+  }
   document.getElementById('sk-eff-label').textContent=Math.round(eff*100);
   document.getElementById('sk-net').textContent=fmtKwh(hourlyAnnualNetKwh);
   document.getElementById('sk-finale').textContent=fmt(hourlyAnnualNetKwh);
-  document.getElementById('sk-ref-only').textContent='Estimation mensuelle nette : '+fmtKwh(simpleAnnualNetKwh);
+  document.getElementById('sk-ref-only').textContent='Base mensuelle avant gains : '+fmtKwh(simpleAnnualBaseKwh);
 
   var annualHours=Math.round(totalH/simTotalYears);
   document.getElementById('sk-hours').textContent=annualHours.toLocaleString('fr-FR');
@@ -1243,23 +1290,20 @@ function computeProduction(N){
   tbody.innerHTML='';
   for(var month=0;month<12;month++){
     var monthHours=Math.round(monthH[month]/simTotalYears);
-    var simpleValue=simpleMonthNetKwh[month];
-    var hourlyValue=hourlyMonthNetKwh[month];
-    var gap=simpleValue>0?((hourlyValue-simpleValue)/simpleValue*100):0;
+    var simpleValue=simpleMonthBaseKwh[month];
+    var hourlyValue=hourlyMonthBaseKwh[month];
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="td-month">'+SIM_MONTHS[month]+'</td>'
       +'<td>'+monthHours+'</td>'
       +'<td>'+monthAvgVh[month].toFixed(1)+' m/s</td>'
       +'<td>'+fmt(simpleValue)+'</td>'
-      +'<td class="td-real">'+fmt(hourlyValue)+'</td>'
-      +'<td class="td-bonus">'+(gap>=0?'+':'')+gap.toFixed(1)+'%</td>';
+      +'<td class="td-real">'+fmt(hourlyValue)+'</td>';
     tbody.appendChild(tr);
   }
   document.getElementById('ft-avg').textContent=annualHours.toLocaleString('fr-FR')+' h';
   document.getElementById('ft-avg2').textContent=totalH>0?(totalProductiveV/totalH).toFixed(1)+' m/s':'—';
-  document.getElementById('ft-simple').textContent=fmt(simpleAnnualNetKwh);
-  document.getElementById('ft-real').textContent=fmt(hourlyAnnualNetKwh);
-  document.getElementById('ft-bonus').textContent=(annualGap>=0?'+':'')+annualGap.toFixed(1)+'%';
+  document.getElementById('ft-simple').textContent=fmt(simpleAnnualBaseKwh);
+  document.getElementById('ft-real').textContent=fmt(baseAnnualGrossKwh);
 
   computeROI();
 }
@@ -1392,6 +1436,11 @@ function computeGustCoefficient(){
   gustMedianRatio=ratios[Math.floor(ratios.length/2)];
   var gustClass=GUST_CLASSES.find(function(item){return gustMedianRatio<item.maxRatio;})||GUST_CLASSES[GUST_CLASSES.length-1];
   gustBonusCoeff=gustClass.bonus;
+  gustTypeLabel=gustClass.label;
+  document.getElementById('s1-wind-type').textContent=gustTypeLabel;
+  document.getElementById('s1-gust-ratio').textContent=gustMedianRatio.toFixed(2);
+  document.getElementById('s1-gust-bonus').textContent='+'+Math.round((gustBonusCoeff-1)*100)+' %';
+  document.getElementById('s1-typology-card').style.display='block';
   computeProduction(getNTurbines());
 }
 
