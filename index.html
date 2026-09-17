@@ -264,6 +264,27 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   .stat-card{padding:.7rem;}
   .stat-val{font-size:19px;}
 }
+
+/* Format de capture PDF constant, y compris depuis un mobile. */
+body.pdf-capture-mode{min-width:980px!important;}
+body.pdf-capture-mode .app{width:900px!important;max-width:900px!important;padding:.875rem!important;}
+body.pdf-capture-mode .sec-body{padding:1.25rem!important;}
+body.pdf-capture-mode .sec-header{padding:.875rem 1.25rem!important;}
+body.pdf-capture-mode .pot-layout{grid-template-columns:1fr 1fr!important;align-items:start!important;}
+body.pdf-capture-mode #map{height:320px!important;}
+body.pdf-capture-mode .s1-cards{grid-template-columns:1fr 1fr!important;}
+body.pdf-capture-mode .device-grid{grid-template-columns:1.4fr 1fr .8fr!important;gap:.875rem!important;}
+body.pdf-capture-mode .cfg-buttons{grid-template-columns:repeat(4,1fr)!important;}
+body.pdf-capture-mode .cfg-btn2{text-align:center!important;padding:.625rem .25rem!important;}
+body.pdf-capture-mode .cfg-btn2 small{display:block!important;margin-left:0!important;}
+body.pdf-capture-mode .prod-step{align-items:center!important;flex-wrap:nowrap!important;}
+body.pdf-capture-mode .step-val{width:auto!important;padding-left:0!important;}
+body.pdf-capture-mode .prod-finale{align-items:center!important;}
+body.pdf-capture-mode .prod-finale-val{font-size:22px!important;text-align:right!important;}
+body.pdf-capture-mode .roi-fields{grid-template-columns:1fr 1fr 1fr!important;}
+body.pdf-capture-mode .roi-summary{grid-template-columns:1fr 1fr!important;}
+body.pdf-capture-mode .roi-chart-wrap{height:160px!important;}
+body.pdf-capture-mode .prod-table{font-size:12px!important;min-width:0!important;}
 </style>
 </head>
 <body>
@@ -811,11 +832,29 @@ async function generateScreenAnalysisPDF(){
     var contentHeightMm=246;
     var pxPerMm=canvas.width/pageWidthMm;
     var maxSlicePx=Math.max(1,Math.floor(contentHeightMm*pxPerMm));
-    var sourceY=0;
-    while(sourceY<canvas.height){
+    var naturalHeightMm=canvas.height/pxPerMm;
+
+    /* Une section légèrement trop haute est réduite pour éviter une page
+       supplémentaire ne contenant qu'une ligne ou une zone blanche. */
+    if(naturalHeightMm<=contentHeightMm*1.25){
       if(hasPage)doc.addPage();
       addHeader(sectionTitle);
-      var sliceHeight=Math.min(maxSlicePx,canvas.height-sourceY);
+      var fittedHeight=Math.min(naturalHeightMm,contentHeightMm);
+      var fittedWidth=canvas.width/(canvas.height/fittedHeight);
+      var fittedX=(210-fittedWidth)/2;
+      doc.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',fittedX,35,fittedWidth,fittedHeight,undefined,'FAST');
+      addFooter(doc.getNumberOfPages());
+      hasPage=true;
+      return;
+    }
+
+    var sourceY=0;
+    while(sourceY<canvas.height){
+      var remaining=canvas.height-sourceY;
+      if(sourceY>0&&remaining<Math.max(50,maxSlicePx*.08))break;
+      if(hasPage)doc.addPage();
+      addHeader(sectionTitle);
+      var sliceHeight=Math.min(maxSlicePx,remaining);
       var slice=document.createElement('canvas');
       slice.width=canvas.width;slice.height=sliceHeight;
       var ctx=slice.getContext('2d');
@@ -829,14 +868,51 @@ async function generateScreenAnalysisPDF(){
       sourceY+=sliceHeight;
     }
   }
+  function resizeCaptureVisuals(){
+    [chartInst,window.daysChartInst,roiChartInst].forEach(function(chart){
+      if(!chart)return;
+      chart.resize();
+      chart.update('none');
+    });
+    if(gmap)gmap.invalidateSize(false);
+  }
+  function addPrecautionsPage(){
+    if(hasPage)doc.addPage();
+    addHeader('Précautions et contact');
+    var y=43;
+    function title(text){
+      doc.setFillColor(235,242,251);doc.roundedRect(10,y-7,190,13,3,3,'F');
+      doc.setTextColor(11,35,64);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(text,15,y+1);
+      y+=18;
+    }
+    function paragraph(text){
+      doc.setTextColor(45,50,56);doc.setFont('helvetica','normal');doc.setFontSize(10);
+      var lines=doc.splitTextToSize(text,180);doc.text(lines,15,y);
+      y+=lines.length*5+7;
+    }
+    title('Une estimation à faire confirmer');
+    var sources=isHybridConfig()?'des données météorologiques historiques ERA5, des données solaires PVGIS et des hypothèses de fonctionnement du dispositif Philéole':'des données météorologiques historiques ERA5 et des hypothèses de fonctionnement du dispositif Philéole';
+    paragraph('Cette simulation constitue une première estimation réalisée à partir '+sources+'. Elle ne constitue ni une garantie de production, ni une proposition commerciale, ni une étude de faisabilité.');
+    paragraph('Les conditions réelles du site - implantation, obstacles, relief, environnement bâti, turbulences, orientation, raccordement et contraintes réglementaires - peuvent modifier les performances. Une étude approfondie par les équipes Philéole est nécessaire avant tout projet d’installation.');
+    y+=5;title('Prochaine étape');
+    doc.setTextColor(11,35,64);doc.setFont('helvetica','bold');doc.setFontSize(15);
+    doc.text('Faites confirmer le potentiel de votre site par Philéole.',15,y);
+    y+=16;doc.setTextColor(45,50,56);doc.setFont('helvetica','normal');doc.setFontSize(11);
+    doc.text('Contact : Jean-Luc Bodard',15,y);
+    y+=8;doc.text('jlbodart@phileole.com',15,y);
+    y+=8;doc.text('+32 (0)475 24 66 70',15,y);
+    addFooter(doc.getNumberOfPages());
+    hasPage=true;
+  }
 
   try{
     modal.style.visibility='hidden';
     document.body.style.overflow='';
+    document.body.classList.add('pdf-capture-mode');
     detail.classList.add('open');
     monthly.style.display='block';
-    window.dispatchEvent(new Event('resize'));
-    await new Promise(function(resolve){setTimeout(resolve,350);});
+    resizeCaptureVisuals();
+    await new Promise(function(resolve){setTimeout(resolve,500);});
 
     for(var i=0;i<sectionIds.length;i++){
       var section=document.getElementById(sectionIds[i]);
@@ -859,12 +935,14 @@ async function generateScreenAnalysisPDF(){
       });
       addCanvasPages(canvas,title?title.textContent.trim():'Analyse');
     }
+    addPrecautionsPage();
   }finally{
     modal.style.visibility=oldModalVisibility;
     document.body.style.overflow=oldOverflow;
     if(!detailWasOpen)detail.classList.remove('open');
     monthly.style.display=oldMonthlyDisplay;
-    window.dispatchEvent(new Event('resize'));
+    document.body.classList.remove('pdf-capture-mode');
+    resizeCaptureVisuals();
   }
 
   if(!hasPage)throw new Error('Aucune section à capturer');
