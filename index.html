@@ -616,7 +616,7 @@ body.pdf-capture-mode .prod-table{font-size:12px!important;min-width:0!important
     <div class="modal-head">
       <div>
         <div class="modal-title" id="lead-title">Recevoir mon analyse préliminaire</div>
-        <div class="modal-sub">Renseignez vos coordonnées pour télécharger immédiatement le PDF de votre simulation.</div>
+        <div class="modal-sub">Renseignez vos coordonnées pour recevoir votre analyse par e-mail et télécharger immédiatement son PDF.</div>
       </div>
       <button class="modal-close" type="button" onclick="closeLeadModal()" aria-label="Fermer">×</button>
     </div>
@@ -659,7 +659,7 @@ body.pdf-capture-mode .prod-table{font-size:12px!important;min-width:0!important
       </div>
       <div style="font-size:11px;line-height:1.5;color:var(--muted);background:var(--bg);padding:.7rem;border-radius:var(--r-sm);margin-top:.875rem;">Cette simulation préalable et simplifiée ne remplace pas une étude de faisabilité. Les équipes Philéole doivent confirmer le potentiel réel du site avant tout projet.</div>
       <label class="consent-row"><input type="checkbox" name="consentement" value="oui" required> <span>J’accepte que Philéole utilise ces informations pour me transmettre cette analyse et me recontacter au sujet de mon projet.</span></label>
-      <button class="btn-cta" id="lead-submit" type="submit" style="margin-top:0;">Télécharger mon analyse PDF</button>
+      <button class="btn-cta" id="lead-submit" type="submit" style="margin-top:0;">Recevoir mon analyse PDF</button>
       <div class="form-feedback" id="lead-feedback" role="status" aria-live="polite"></div>
     </form>
   </div>
@@ -703,7 +703,7 @@ function openLeadModal(){
   var btn=document.getElementById('lead-submit');
   resetLeadDownload();
   feedback.textContent='';feedback.className='form-feedback';
-  btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+  btn.disabled=false;btn.textContent='Recevoir mon analyse PDF';
   document.getElementById('lead-modal').classList.add('open');
   document.body.style.overflow='hidden';
   setTimeout(function(){document.getElementById('lead-name').focus();},0);
@@ -743,6 +743,44 @@ function downloadLeadPDF(){
   link.click();
   link.remove();
 }
+function blobToBase64(blob){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(){
+      var result=String(reader.result||'');
+      var comma=result.indexOf(',');
+      if(comma<0)return reject(new Error('PDF illisible'));
+      resolve(result.slice(comma+1));
+    };
+    reader.onerror=function(){reject(reader.error||new Error('Lecture du PDF impossible'));};
+    reader.readAsDataURL(blob);
+  });
+}
+async function emailLeadPDF(form,pdf){
+  var maxPdfBytes=4*1024*1024;
+  if(pdf.blob.size>maxPdfBytes)throw new Error('Le PDF est trop volumineux pour être joint à l’e-mail');
+  var fields=new FormData(form);
+  var payload={
+    recipientName:String(fields.get('nom')||''),
+    recipientEmail:String(fields.get('email')||''),
+    address:String(fields.get('adresse_simulation')||''),
+    configuration:String(fields.get('configuration')||''),
+    production:String(fields.get('production_estimee')||''),
+    roi:String(fields.get('roi_estime')||''),
+    filename:pdf.filename,
+    pdfBase64:await blobToBase64(pdf.blob),
+    requestId:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))
+  };
+  var response=await fetch('/.netlify/functions/send-analysis-email',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  var result={};
+  try{result=await response.json();}catch(_){result={};}
+  if(!response.ok)throw new Error(result.error||('HTTP '+response.status));
+  return result;
+}
 async function submitLeadForm(event){
   event.preventDefault();
   var form=event.currentTarget;
@@ -752,7 +790,7 @@ async function submitLeadForm(event){
   if(!window.jspdf||!window.jspdf.jsPDF){
     feedback.textContent='Le générateur PDF ne s’est pas chargé. Rechargez la page puis réessayez.';
     feedback.className='form-feedback err';
-    btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+    btn.disabled=false;btn.textContent='Recevoir mon analyse PDF';
     return;
   }
   var pdf;
@@ -762,7 +800,7 @@ async function submitLeadForm(event){
     console.error('Échec de la génération du PDF',error);
     feedback.textContent='Le PDF n’a pas pu être préparé. Rechargez la page puis réessayez.';
     feedback.className='form-feedback err';
-    btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+    btn.disabled=false;btn.textContent='Recevoir mon analyse PDF';
     return;
   }
   if(!PDF_SCREEN_TEST_MODE){
@@ -773,20 +811,31 @@ async function submitLeadForm(event){
     }catch(error){
       feedback.textContent='Le contact n’a pas été enregistré par Netlify ('+(error&&error.message?error.message:'erreur réseau')+'). Vérifiez que la détection des formulaires est activée, puis redéployez le site.';
       feedback.className='form-feedback err';
-      btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+      btn.disabled=false;btn.textContent='Recevoir mon analyse PDF';
       return;
     }
   }
   try{
     exposeLeadDownload(pdf);
-    feedback.textContent='Votre contact a été enregistré et votre PDF est prêt. Si le téléchargement ne démarre pas, cliquez de nouveau sur le bouton.';
+    feedback.textContent='Votre PDF est prêt et son téléchargement démarre. Envoi par e-mail en cours…';
     feedback.className='form-feedback ok';
     downloadLeadPDF();
+    if(!PDF_SCREEN_TEST_MODE){
+      try{
+        await emailLeadPDF(form,pdf);
+        feedback.textContent='Votre contact a été enregistré. Le PDF a été téléchargé et envoyé à '+document.getElementById('lead-email').value+'.';
+        feedback.className='form-feedback ok';
+      }catch(emailError){
+        console.error('Échec de l’envoi du PDF par e-mail',emailError);
+        feedback.textContent='Votre PDF a été téléchargé et votre contact enregistré, mais l’envoi par e-mail n’a pas abouti. Vous pouvez le télécharger de nouveau avec le bouton ci-dessus.';
+        feedback.className='form-feedback err';
+      }
+    }
   }catch(error){
     console.error('Échec du téléchargement du PDF',error);
     feedback.textContent='Votre contact a bien été enregistré, mais le téléchargement n’a pas pu démarrer. Rechargez la page puis réessayez.';
     feedback.className='form-feedback err';
-    btn.disabled=false;btn.textContent='Télécharger mon analyse PDF';
+    btn.disabled=false;btn.textContent='Recevoir mon analyse PDF';
   }
 }
 
