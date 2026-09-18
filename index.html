@@ -216,6 +216,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .form-feedback{display:none;margin-top:.75rem;padding:.7rem;border-radius:var(--r-sm);font-size:12px;}
 .form-feedback.ok{display:block;background:#e8f7f1;color:#16684d;}
 .form-feedback.err{display:block;background:#fff1f2;color:#9f1239;}
+.turnstile-wrap{min-height:65px;margin:.75rem 0;display:flex;align-items:center;}
+.turnstile-status{font-size:11px;color:var(--muted);}
 
 /* ── Potential card ── */
 #pot{
@@ -659,16 +661,69 @@ body.pdf-capture-mode .prod-table{font-size:12px!important;min-width:0!important
       </div>
       <div style="font-size:11px;line-height:1.5;color:var(--muted);background:var(--bg);padding:.7rem;border-radius:var(--r-sm);margin-top:.875rem;">Cette simulation préalable et simplifiée ne remplace pas une étude de faisabilité. Les équipes Philéole doivent confirmer le potentiel réel du site avant tout projet.</div>
       <label class="consent-row"><input type="checkbox" name="consentement" value="oui" required> <span>J’accepte que Philéole utilise ces informations pour me transmettre cette analyse et me recontacter au sujet de mon projet.</span></label>
+      <div class="turnstile-wrap">
+        <div id="lead-turnstile"><span class="turnstile-status">Chargement de la vérification anti-robot…</span></div>
+      </div>
       <button class="btn-cta" id="lead-submit" type="submit" style="margin-top:0;">Recevoir mon analyse PDF</button>
       <div class="form-feedback" id="lead-feedback" role="status" aria-live="polite"></div>
     </form>
   </div>
 </div>
 
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 var PDF_SCREEN_TEST_MODE=false;
+var leadTurnstileWidgetId=null;
+var leadTurnstileInitPromise=null;
+function waitForTurnstile(){
+  return new Promise(function(resolve,reject){
+    var started=Date.now();
+    (function check(){
+      if(window.turnstile)return resolve(window.turnstile);
+      if(Date.now()-started>10000)return reject(new Error('Service anti-robot indisponible'));
+      setTimeout(check,100);
+    })();
+  });
+}
+function initLeadTurnstile(){
+  if(leadTurnstileWidgetId!==null&&window.turnstile){
+    window.turnstile.reset(leadTurnstileWidgetId);
+    return Promise.resolve();
+  }
+  if(leadTurnstileInitPromise)return leadTurnstileInitPromise;
+  leadTurnstileInitPromise=Promise.all([
+    fetch('/.netlify/functions/turnstile-config',{cache:'no-store'}).then(async function(response){
+      var data={};
+      try{data=await response.json();}catch(_){data={};}
+      if(!response.ok||!data.siteKey)throw new Error(data.error||'Configuration anti-robot indisponible');
+      return data.siteKey;
+    }),
+    waitForTurnstile()
+  ]).then(function(values){
+    var target=document.getElementById('lead-turnstile');
+    target.textContent='';
+    leadTurnstileWidgetId=window.turnstile.render(target,{
+      sitekey:values[0],
+      action:'send_analysis',
+      language:'fr',
+      theme:'light',
+      size:'flexible'
+    });
+  }).catch(function(error){
+    leadTurnstileInitPromise=null;
+    throw error;
+  });
+  return leadTurnstileInitPromise;
+}
+function leadTurnstileToken(){
+  if(leadTurnstileWidgetId===null||!window.turnstile)return '';
+  return String(window.turnstile.getResponse(leadTurnstileWidgetId)||'');
+}
+function resetLeadTurnstile(){
+  if(leadTurnstileWidgetId!==null&&window.turnstile)window.turnstile.reset(leadTurnstileWidgetId);
+}
 function toggleDetail(){
   var btn=document.getElementById('detail-btn');
   var content=document.getElementById('detail-content');
@@ -703,9 +758,17 @@ function openLeadModal(){
   var btn=document.getElementById('lead-submit');
   resetLeadDownload();
   feedback.textContent='';feedback.className='form-feedback';
-  btn.disabled=false;btn.textContent='Recevoir mon analyse PDF';
+  btn.disabled=true;btn.textContent='Chargement de la vérification…';
   document.getElementById('lead-modal').classList.add('open');
   document.body.style.overflow='hidden';
+  initLeadTurnstile().then(function(){
+    btn.disabled=false;btn.textContent='Recevoir mon analyse PDF';
+  }).catch(function(error){
+    console.error('Echec du chargement Turnstile',error);
+    feedback.textContent='La vérification anti-robot n’a pas pu être chargée. Rechargez la page puis réessayez.';
+    feedback.className='form-feedback err';
+    btn.disabled=true;btn.textContent='Vérification indisponible';
+  });
   setTimeout(function(){document.getElementById('lead-name').focus();},0);
 }
 function closeLeadModal(){
@@ -769,6 +832,7 @@ async function emailLeadPDF(form,pdf){
     roi:String(fields.get('roi_estime')||''),
     filename:pdf.filename,
     pdfBase64:await blobToBase64(pdf.blob),
+    turnstileToken:leadTurnstileToken(),
     requestId:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))
   };
   var response=await fetch('/.netlify/functions/send-analysis-email',{
@@ -787,6 +851,12 @@ async function submitLeadForm(event){
   var btn=document.getElementById('lead-submit');
   var feedback=document.getElementById('lead-feedback');
   btn.disabled=true;btn.textContent='Préparation du PDF…';feedback.className='form-feedback';
+  if(!leadTurnstileToken()){
+    feedback.textContent='Veuillez terminer la vérification anti-robot puis réessayer.';
+    feedback.className='form-feedback err';
+    btn.disabled=false;btn.textContent='Recevoir mon analyse PDF';
+    return;
+  }
   if(!window.jspdf||!window.jspdf.jsPDF){
     feedback.textContent='Le générateur PDF ne s’est pas chargé. Rechargez la page puis réessayez.';
     feedback.className='form-feedback err';
@@ -827,6 +897,7 @@ async function submitLeadForm(event){
         feedback.className='form-feedback ok';
       }catch(emailError){
         console.error('Échec de l’envoi du PDF par e-mail',emailError);
+        resetLeadTurnstile();
         feedback.textContent='Votre PDF a été téléchargé et votre contact enregistré, mais l’envoi par e-mail n’a pas abouti. Vous pouvez le télécharger de nouveau avec le bouton ci-dessus.';
         feedback.className='form-feedback err';
       }
