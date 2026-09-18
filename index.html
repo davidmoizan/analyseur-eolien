@@ -213,10 +213,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .lead-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
 .lead-grid .full{grid-column:1/-1;}
 .consent-row{display:flex;align-items:flex-start;gap:.55rem;font-size:11px;color:var(--muted);margin:.875rem 0;}
+.lead-notice{font-size:10px;line-height:1.45;color:var(--muted);margin-top:.65rem;}
 .form-feedback{display:none;margin-top:.75rem;padding:.7rem;border-radius:var(--r-sm);font-size:12px;}
 .form-feedback.ok{display:block;background:#e8f7f1;color:#16684d;}
 .form-feedback.err{display:block;background:#fff1f2;color:#9f1239;}
-.turnstile-wrap{min-height:65px;margin:.75rem 0;display:flex;align-items:center;}
+.turnstile-wrap{min-height:0;margin:.5rem 0;display:block;}
 .turnstile-status{font-size:11px;color:var(--muted);}
 
 /* ── Potential card ── */
@@ -618,7 +619,7 @@ body.pdf-capture-mode .prod-table{font-size:12px!important;min-width:0!important
     <div class="modal-head">
       <div>
         <div class="modal-title" id="lead-title">Recevoir mon analyse préliminaire</div>
-        <div class="modal-sub">Renseignez vos coordonnées pour recevoir votre analyse par e-mail et télécharger immédiatement son PDF.</div>
+        <div class="modal-sub">Recevez immédiatement votre analyse personnalisée par e-mail et téléchargez son PDF.</div>
       </div>
       <button class="modal-close" type="button" onclick="closeLeadModal()" aria-label="Fermer">×</button>
     </div>
@@ -635,36 +636,24 @@ body.pdf-capture-mode .prod-table{font-size:12px!important;min-width:0!important
       <input type="hidden" name="roi_estime" id="lead-roi">
       <div class="lead-grid">
         <div>
-          <label class="field-lbl" for="lead-name">Nom *</label>
+          <label class="field-lbl" for="lead-name">Nom et prénom *</label>
           <input class="inp-field" id="lead-name" name="nom" autocomplete="name" required>
         </div>
         <div>
-          <label class="field-lbl" for="lead-email">Email *</label>
+          <label class="field-lbl" for="lead-email">E-mail professionnel *</label>
           <input class="inp-field" id="lead-email" name="email" type="email" autocomplete="email" required>
         </div>
-        <div>
-          <label class="field-lbl" for="lead-phone">Téléphone</label>
-          <input class="inp-field" id="lead-phone" name="telephone" type="tel" autocomplete="tel">
-        </div>
-        <div>
+        <div class="full">
           <label class="field-lbl" for="lead-company">Organisation</label>
           <input class="inp-field" id="lead-company" name="organisation" autocomplete="organization">
         </div>
-        <div class="full">
-          <label class="field-lbl" for="lead-role">Fonction</label>
-          <input class="inp-field" id="lead-role" name="fonction" autocomplete="organization-title" placeholder="Dirigeant, maire, DGS…">
-        </div>
-        <div class="full">
-          <label class="field-lbl" for="lead-message">Votre projet</label>
-          <textarea class="inp-field" id="lead-message" name="message" rows="3" style="resize:vertical;font-family:inherit;"></textarea>
-        </div>
       </div>
-      <div style="font-size:11px;line-height:1.5;color:var(--muted);background:var(--bg);padding:.7rem;border-radius:var(--r-sm);margin-top:.875rem;">Cette simulation préalable et simplifiée ne remplace pas une étude de faisabilité. Les équipes Philéole doivent confirmer le potentiel réel du site avant tout projet.</div>
-      <label class="consent-row"><input type="checkbox" name="consentement" value="oui" required> <span>J’accepte que Philéole utilise ces informations pour me transmettre cette analyse et me recontacter au sujet de mon projet.</span></label>
+      <label class="consent-row"><input type="checkbox" name="consentement" value="oui"> <span>J’accepte d’être recontacté par Philéole au sujet de mon projet.</span></label>
       <div class="turnstile-wrap">
         <div id="lead-turnstile"><span class="turnstile-status">Chargement de la vérification anti-robot…</span></div>
       </div>
       <button class="btn-cta" id="lead-submit" type="submit" style="margin-top:0;">Recevoir mon analyse PDF</button>
+      <div class="lead-notice">Vos informations sont utilisées pour vous transmettre cette analyse. Cette simulation simplifiée ne remplace pas une étude de faisabilité.</div>
       <div class="form-feedback" id="lead-feedback" role="status" aria-live="polite"></div>
     </form>
   </div>
@@ -709,7 +698,8 @@ function initLeadTurnstile(){
       action:'send_analysis',
       language:'fr',
       theme:'light',
-      size:'flexible'
+      size:'flexible',
+      appearance:'interaction-only'
     });
   }).catch(function(error){
     leadTurnstileInitPromise=null;
